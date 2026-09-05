@@ -1,5 +1,8 @@
 # Relay — Steps 5–7 real settlement (round 2, self-audit fixes + live UI)
 
+> Current local setup / 换机与启动说明：见 [LOCAL_SETUP.md](LOCAL_SETUP.md)。
+> 下文包含历史迭代记录；当前启动命令为 `sh start.sh`，看板地址为 http://127.0.0.1:8000/。
+
 ## Round 3: Screen 1 UI now drives the real flow
 
 **Answer to the question that started this round: no, it's not showing fake

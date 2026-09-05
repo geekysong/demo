@@ -786,6 +786,10 @@ li{{margin-bottom:4px;color:var(--text-dim);}}
   </div>
 
   <div class="card locked-card" style="grid-column:1/-1;">
+    <h3>No qualifying candidate <span class="locked-badge">HARD STOP</span></h3>
+    <p>Stop before purchase and flag the request for human review. Never force-select a vendor or relax policy automatically.</p>
+  </div>
+  <div class="card locked-card" style="grid-column:1/-1;">
     <h3>🔒 Category blacklist <span class="locked-badge">LENDER-LOCKED — NOT EDITABLE</span></h3>
     <ul>{blacklist_html}</ul>
     <div class="locked-note">Per PRD Section 5: this is a hard, non-negotiable constraint. The Agent cannot override it "for business need," and per Section 8 it is not a judgment call the Agent makes at runtime — it ships hardcoded and stays that way in this UI.</div>

@@ -1,128 +1,179 @@
-# Relay PRD v2 — implementation gap review and next-step plan
+# Relay PRD v2.1 — 当前产品基线、Demo 差异与执行计划
 
-Date: 2026-09-04  
-Compared:
+更新日期：2026-09-05
+状态：根据当前 Demo 修订的需求基线；已实现能力与待实现要求分开标记。
 
-- PRD: `/Users/dongya/Downloads/relay-prd-v2.md`
-- Current UI: `/Users/dongya/Downloads/demo/relay-screen1-live.html`
-- Supporting implementation: `orchestrator.py`, `policy_filter.py`, `billing.py`, and the rendered app at `http://127.0.0.1:8000/`
+## 1. 文档范围与依据
 
-## Executive assessment
+本文件原为 2026-09-04 的 PRD v2 差异评审与执行计划。本次按用户指定，将其更新为可继续执行的 PRD 基线，保留原评审记录的目标要求，并吸收已验证的 Demo 改进。
 
-The current build is a strong hackathon proof of the x402/XRPL payment loop and audit trail. It demonstrates a structured trigger, server-side policy filtering, a real HTTP 402 flow, XRP Testnet settlement, independent on-chain confirmation, billing calculations, and a populated audit ledger.
+原评审引用的 `/Users/dongya/Downloads/relay-prd-v2.md` 不在当前项目中，因此本次没有重新核对那份完整原始 PRD；关于原要求的判断以本文件原有内容为依据，不声称覆盖未提供的章节。
 
-It is not yet a complete implementation of PRD v2. The biggest gaps are:
+对照依据：
 
-1. Bazaar discovery and counterparty selection are still mocked.
-2. The paid endpoint and quote are bound to one vendor selected at server startup, not the vendor selected for the current request.
-3. The compliance-critical explainability rule is not enforced.
-4. Screen 2 labels four values as lender-editable but provides no edit/save workflow.
-5. The purchased supplemental data is received by the backend but not shown to the lender in the Screen 1 receipt.
-6. Screen 3 has CSV export but no PDF export.
+- `orchestrator.py`：请求、状态、付款、确认、审计 API。
+- `marketplace.py`：两家已配置供应商的实时 402 元数据探测与 fallback。
+- `policy_filter.py`、`billing.py`：筛选规则与计费模型。
+- `relay-screen1-live.html`：三个业务看板标签页。
+- `relay-business-deck.html`：产品叙事与拟议商业模型；提案不等于代码实现。
+- `MARKETPLACE_TESTNET.md`、`LOCAL_SETUP.md`：镜像边界与运行方式。
+- 本会话已验证的本机成功采购及浏览器策略页、审计页。其他结论来自代码检查；未重新执行所有异常场景。
 
-## PRD comparison
+历史 README / README_AUDIT 中“发现完全静态”“只展示即满足可编辑要求”等表述已过时，不作为完成状态依据。
 
-| PRD area | Status | Current evidence | Gap / consequence |
-|---|---|---|---|
-| Product boundary: procurement only, no credit decision | Meets | No scoring, approval, or denial logic; trigger score is used only to decide whether procurement fires | Preserve this boundary in all future UI copy and APIs |
-| Structured lender request | Meets for demo | Screen 1 posts score, data type, region, freshness, and trigger reason | Values are fixed in the UI; acceptable because Screen 1 is a live view, not specified as an intake form |
-| Bazaar discovery | Does not meet | `policy_filter.CANDIDATES` is a static list; discovery only filters it by category | Core challenge step 2 is simulated, not demonstrated |
-| Policy filtering and rejection reasons | Mostly meets | Price, cumulative spend, whitelist, blacklist, trust, and freshness checks run server-side; rejection reasons are logged | Explainability metadata is not checked; freshness is global rather than category-specific |
-| Selected counterparty drives 402 quote/payment | Does not fully meet | Real 402/XRP flow works, but `/income-verification` price, description, and vendor are fixed from `PRODUCTION_SELECTED` at startup | A request-time selection can diverge from the vendor actually paid; this becomes critical once policy is editable or discovery is live |
-| XRP Ledger settlement and receipt | Meets for XRP demo | Real XRP Testnet payment, transaction hash, balance checks, and independent validation are present | RLUSD is not implemented, but PRD permits XRP **or** RLUSD, so XRP alone is sufficient |
-| Deliver useful data to lender | Partial | Backend receives and stores the paid response in live state | Receipt says “Data delivered” but does not render the returned verification result or reason codes; no separate delivery API/webhook |
-| Pricing | Mostly meets | $50 trial credit, 17.5% fee, and automatic trial-to-PAYG transition are modeled | State is global/in-memory; platform fee is ledger-only; subscription is omitted. Reasonable demo simplifications if disclosed |
-| Screen 1 live shopping | Mostly meets | Trigger, candidates, selection, quote/payment/settlement rail, and receipt are present | Terminal phases such as `not_triggered`, `escalated_no_candidate`, and `policy_test_complete` are not in the UI phase model, so polling can continue indefinitely and failure/escalation details are not rendered cleanly |
-| Screen 2 policy configuration | Does not meet | Values and locked blacklist display correctly from `/policy.json` | PRD explicitly says per-transaction cap, cumulative cap, whitelist, and trust threshold are lender-editable. The current note claiming display-only is sufficient is inconsistent with the PRD |
-| Screen 3 audit ledger | Mostly meets | Required columns, candidate details, rejection reasons, transaction links, and CSV export are present | PDF export is missing; human escalation is only a status/audit record, not a real notification or work queue |
-| Audit integrity | Meets for demo | Append-only JSONL plus XRPL transaction corroboration | Audit JSONL is local mutable storage, and request/billing counters are not durable or tenant-scoped |
+## 2. 产品目标与边界
 
-## Recommended execution plan
+Relay 为贷方按需采购补充数据：贷方通过一次 Relay 集成发起请求，Relay 负责发现候选、执行策略、读取报价、付款、获取数据及提供审计凭证。避免每个低频数据供应商都单独接入，但贷方仍需集成 Relay。
 
-### Phase 1 — close the demo-breaking correctness gaps
+Relay 不生成信用评分，不批准或拒绝贷款，不替代贷方风险决策。申请人分数是输入信号，当前仅用于是否触发采购的区间判断。
 
-Goal: ensure every path shown in the UI is truthful, terminal, and useful.
+当前 Demo 范围：单机、单全局账户、XRP Testnet、本地供应商镜像和样例交付。多租户、生产认证、真实贷方数据接入及正式收费不属于已交付能力。
 
-1. Add terminal UI handling for `not_triggered`, `escalated_no_candidate`, `policy_test_complete`, `failed`, and `settlement_unconfirmed`.
-2. Stop polling on every terminal state and render a clear outcome card with rejection/escalation reasons.
-3. Render the purchased data payload in the Screen 1 delivery card, including vendor, freshness, result, and discrete reason codes.
-4. Make response rendering safe: escape all vendor/Bazaar/API strings before inserting them into HTML.
-5. Add regression tests for success, no-candidate escalation, out-of-band trigger, policy-test completion, and settlement failure/unconfirmed paths.
+## 3. 相对旧评审的变化
 
-Acceptance criteria:
+| 旧评审结论 | 当前核对结果 | PRD v2.1 处理 |
+|---|---|---|
+| Bazaar 发现完全静态 | 每次默认采购会探测两个已配置真实资源的未付款 HTTP 402 声明；失败时逐资源 fallback | 将实时声明读取、来源及 fallback 标识纳入基线；动态目录搜索仍待实现 |
+| 付款始终绑定单一启动时供应商 | 本次选中的 `testnet_path` 决定镜像付款路由，LEI 与 BLS 各有路由 | 关闭“固定单供应商”旧问题；保留报价一致性验证要求 |
+| 交付卡不显示购得数据 | 已显示 `delivered.result` JSON、镜像标识及付款凭证 | 将数据与凭证同屏展示纳入验收基线 |
+| 请求数据类型固定 | 看板可选择企业注册状态或行业收入基准，POST 发送所选类型 | 两种可选数据产品纳入 Demo 范围 |
+| 所有异常终态都未处理 | `failed`、`settlement_unconfirmed` 已停止轮询；其他三种终态仍未完整处理 | 缩小缺口，保留未确认状态的错误成功标题问题 |
+| 迁移需拼接历史环境文件 | 已有 Python 依赖锁定、测试钱包初始化、启动脚本及同源业务入口 | 可复现换机配置纳入交付要求 |
+| 成功依赖 facilitator 回执 | 已有独立链上 Tx 查询及付款前后余额核对 | 明确“链上确认后才标记 delivered”的验收要求 |
 
-- Every run ends in a visible terminal state and stops polling.
-- A successful run shows both the data product and the payment/audit receipt.
-- A no-candidate run proves that no payment was attempted and shows all rejection reasons.
-- Untrusted candidate metadata cannot inject HTML or script into the UI.
+这些改进提高了 Demo 的可展示性和可验证性；它们不构成完整生产采购能力。
 
-### Phase 2 — enforce the full compliance policy
+## 4. 请求与八步业务流
 
-Goal: close the highest-risk PRD policy gaps before integrating external vendors.
+请求接口为 `POST /run`，异步返回 `started`、`run_id`、`request_id`；通过 `GET /status` 读取当前全局运行状态。它尚不是按 request ID 查询的多任务 API。
 
-1. Extend the candidate schema with explainability metadata such as `supports_reason_codes`, `output_kind`, and intended `decision_use`.
-2. Enforce the adverse-use rule server-side: reject black-box scores when the request says the data may support an adverse decision; allow the documented relaxed path only for approval-support use.
-3. Replace the global freshness limit with a category-specific staleness table, while allowing a request to tighten but never loosen the configured limit.
-4. Add tests proving blacklist and explainability rules cannot be weakened through request payloads or Screen 2.
+| 输入 | 当前行为 |
+|---|---|
+| `applicant_score` | 看板固定 612；默认区间 580–669 |
+| `data_type` | 看板可选 `business_registration_status` 或 `industry_income_benchmarks` |
+| `applicant_region` | 看板发送 US；只透传与记录，未按地区过滤；API 省略时默认 US-TX |
+| `freshness_requirement_days` | 看板固定 30；后端可接受更严格值，取请求值与服务端上限的较小值 |
+| `applicant_id` / `trigger_reason` | 关联累计采购和审计；看板使用演示申请人 |
+| `scenario` | 默认真实测试网采购；API 另有 over_cap、blacklist、no_candidate 测试夹具 |
 
-Acceptance criteria:
+正式要求仍包括输入类型、范围、必填项验证。当前宽松 JSON 解析及默认值不等于已实现接口校验。
 
-- A black-box adverse-use candidate is rejected with a precise audit reason.
-- Category-specific freshness rules are visible in policy output and enforced.
-- Blacklist and explainability constraints have no writable API surface.
+1. **触发**：目标是在任何外部探测前判断分数区间。当前代码先调用 `marketplace.load_candidates()` 再检查区间；区间外不会付款，但仍产生外部探测，须修正执行顺序。
+2. **发现**：读取固定配置的两个资源的实时 402 声明，解析价格、schema、样例和来源。`DIRECTORY_URL` 当前只作为来源标签，并未实际查询目录。
+3. **候选范围**：按请求的数据类别筛选。看板支持的两类目前各只有一个真实资源；没有证明同类多供应商竞争选优。
+4. **策略筛选**：每次运行重新执行服务端规则，记录拒绝原因；合格者按报价 drops 最低者选择，同价沿用输入顺序。将此既有选择规则明确为 Demo 默认规则。
+5. **报价**：请求选中资源对应的本地 Testnet 镜像，获取真实 HTTP 402 付款要求。
+6. **签名付款**：本地演示付款钱包签名，以 `PAYMENT-SIGNATURE` 重试镜像请求。
+7. **结算确认**：镜像服务通过 facilitator 验证与结算，Relay 从 `PAYMENT-RESPONSE` 读取交易哈希，再独立查询链上 validated 与 tesSUCCESS。
+8. **交付审计**：确认成功才标记 delivered，展示样例、交易哈希、余额变化与计费结果，并追加审计记录。
 
-### Phase 3 — make Screen 2 genuinely lender-editable
+报价一致性仍需补齐：镜像价格和样例在服务启动时由 fallback 配置生成，而发现价格在每次请求刷新。现有代码没有在签名前逐项核对选中价格、402 amount、payTo、network、asset 及路由身份。当前成功交易一致，不能据此保证供应商价格变化时仍一致。
 
-Goal: meet the explicit Screen 2 requirement without exposing compliance-critical settings.
+## 5. 数据来源及真实性要求
 
-1. Add form controls for per-transaction cap, cumulative cap, whitelist selections, and trust threshold.
-2. Add a validated policy update endpoint that accepts only those four fields.
-3. Keep blacklist and explainability constraints server-owned and immutable.
-4. Persist editable policy values across restarts for the demo, ideally in a small SQLite database or a validated JSON config file.
-5. Show save success, validation errors, and an “effective from” timestamp/version.
+| 数据产品 | 真实资源 | 当前结算路径 |
+|---|---|---|
+| CompliancePulse · Global LEI lookup | `https://compliancepulse.theaslangroupllc.com/api/validate/lei` | `/testnet-mirror/lei` |
+| MacroPulse · BLS wage benchmarks | `https://macropulse.theaslangroupllc.com/api/macro/bls-series` | `/testnet-mirror/bls` |
 
-Acceptance criteria:
+本次成功验证价格为 20,000 drops = 0.02 XRP。金额是验证快照，不是永久承诺。
 
-- Saved values survive restart and immediately govern new runs.
-- Attempts to submit blacklist or explainability changes are rejected and audited.
-- Screen 1 and Screen 2 read the same effective policy version.
+必须区分三个事实：真实资源声明的付款网络为 `xrpl:0`；Demo 实际向本地镜像的商户钱包以 `xrpl:1` 付款；交付的是镜像中保存的供应商声明样例。没有向主网供应商付款，也没有基于当前申请人实时查询业务数据。
 
-### Phase 4 — replace simulated discovery with a real Bazaar adapter
+来源探测失败时看板会显示 fallback，但默认流程仍可购买测试网镜像。PRD 要求保留明确标识，并将 `discovery_status`、失败原因和声明快照写入审计；当前审计未完整保存这些字段。
 
-Goal: demonstrate genuine request-time discovery and selection.
+候选 `trust_score=80`、`supports_reason_codes=true`、`deterministic_output=true` 为 Demo 适配器赋值，并非独立资质验证。`freshness_days=0` 也不能证明样例数据本身新鲜；当前没有解析并验证样例数据时点。不得把这些字段宣传为已完成真实数据质量核验。
 
-1. Define a provider-neutral candidate contract: vendor ID/name, endpoint, price/asset, input/output schema, category, region coverage, freshness, trust score, and explainability metadata.
-2. Implement a Bazaar client/adapter that converts the structured lender request into a discovery query and normalizes returned services.
-3. Keep the current static candidate set only as an explicit offline-demo fallback, visibly labeled as simulated.
-4. Bind the selected candidate's actual endpoint, quote, price, asset, and pay-to address to the request-time x402 flow.
-5. Verify the 402 response matches the selected vendor before signing; abort and audit on any mismatch.
+## 6. Policy Matrix
 
-Acceptance criteria:
+| 要求 | 当前状态 | 后续验收 |
+|---|---|---|
+| 灰区触发 580–669 | 已检查，但在外部探测之后 | 区间外既不探测也不付款，产生清楚的终态记录 |
+| 单笔上限 100,000 drops（0.1 XRP） | 对候选报价执行 | 签名前也核验真实 402 报价 |
+| 每申请人累计上限 500,000 drops（0.5 XRP） | 内存计数，确认成功后累加 | 持久化；并发下原子预留额度，避免多个请求同时越限 |
+| 白名单与黑名单 | 服务端执行；请求不能修改策略 | 黑名单不可通过配置页或 API 放宽 |
+| 信任阈值 70 | 执行比较，当前数据源信任分为模拟代理值 | 来源可追溯，低于阈值明确拒绝 |
+| 新鲜度上限 30 天 | 全局候选字段比较；请求只能收紧 | 按类别配置，验证实际数据时点，区分探测时间与数据时间 |
+| 可解释性 / adverse-use | 未实现筛选；字段存在不等于执行 | 请求表达用途；不利决策用途拒绝无法提供解释的黑箱结果；审批支持用途按既定规则处理 |
+| 无合格候选 | 后端停止付款并写审计 | 前端完整展示原因，进入明确的人审队列；不自动放宽标准 |
+| 选择规则 | 合格者最低价，同价输入顺序 | 确定性规则与选择原因进入审计 |
 
-- The candidate list comes from a recorded live Bazaar response or a clearly labeled fallback.
-- Changing the request changes the discovered candidate set.
-- The selected candidate, quoted merchant, paid merchant, price, and delivered payload all match in one audit record.
+黑名单保留：`geographic_layer_no_income_context`、`surname_ethnicity_database`、`social_media_profiling`。本次没有因 Demo 未实现而删除可解释性、类别新鲜度或人审要求。
 
-### Phase 5 — finish the audit/demo package
+## 7. 三个看板与验收标准
 
-Goal: make the demo easy to judge and export.
+### Screen 1：Live Shopping
 
-1. Add PDF export for the audit ledger, with the same fields and rejection details as CSV.
-2. Add a visible human-review queue/status for no-candidate escalations; for hackathon scope, an in-app queue is enough.
-3. Add request filters/search and a detail drawer so the ledger remains usable beyond a few dozen records.
-4. Add a deterministic demo mode that exercises success, blacklist rejection, explainability rejection, and no-candidate escalation without making unnecessary real payments.
-5. Update `README_AUDIT.md` so Screen 2 is no longer marked compliant while read-only.
+已实现：结构化请求展示、两类产品选择、实时来源与 fallback 标识、候选筛选、后端状态驱动的流程轨道、样例 JSON、测试网交易链接、独立确认、余额变化与计费明细。
 
-Acceptance criteria:
+待补齐：
 
-- CSV and PDF exports contain the same required audit fields.
-- A judge can run the four canonical scenarios from the UI and understand the outcome without reading logs.
+- `not_triggered`、`escalated_no_candidate`、`policy_test_complete` 必须停止轮询、恢复按钮并展示结果；当前仍显示为运行中。
+- `settlement_unconfirmed` 虽已停止轮询，复用的回执标题却仍写“已交付且链上确认”；必须改为明确待确认，避免引导重复付款。
+- 无选择结果时也应呈现全部候选拒绝原因，不能依赖 `s.selected` 才渲染候选。
+- 失败消息和回执拒绝原因仍有未经转义的 HTML 插值；统一安全渲染，并限制交易链接格式。
+- 后端未响应、工作线程异常退出应有超时结果。当前外部探测及部分输入处理位于异常捕获外，可能停在 starting/candidates。
 
-## Suggested order for the next implementation pass
+验收：每个终态可见且停止轮询；只有链上成功确认显示完整成功；样例、fallback、未确认及失败彼此可区分。
 
-For the next coding pass, implement Phases 1 and 2 together. They close visible state bugs and the compliance-critical explainability gap without depending on an external Bazaar service. Then implement Screen 2 editing. Start the live Bazaar phase as soon as the discovery endpoint/tool and schema are available, because it is the largest remaining challenge-level gap.
+### Screen 2：Policy Config
 
-## Input needed before Phase 4
+当前读取 `/policy.json` 显示生效值，只读；虽然标有 lender-editable，没有输入与保存操作。原要求的四项可编辑能力仍未满足，不改写为已完成。
 
-Please provide the x402 Bazaar discovery endpoint/tool, authentication method if any, and one sample candidate response. If no live Bazaar interface is available, the recommended fallback is to build the adapter contract now and use a recorded fixture clearly labeled “simulated discovery” in the UI.
+目标：单笔上限、累计上限、白名单、信任阈值可编辑；服务端只允许这四项变更并校验；保存后持久化，显示生效时间和版本；黑名单、可解释性要求不可修改。Screen 1/2 使用同一策略版本。
 
+### Screen 3：Audit Ledger
+
+已实现：追加 JSONL、表格、候选详情、拒绝原因、交易链接、刷新和 CSV 导出。已确认成功交易在页面显示为 delivered。
+
+待实现：PDF 导出、检索过滤、可操作的人审队列。JSONL 能跨重启保留，但本地文件可被修改，不是防篡改账本；计费与累计额度仍为内存状态。
+
+要求补充：策略版本、声明/fallback 快照、实际 quote 与付款对象、实际结算金额；失败后保留已知交易哈希和阶段，不能统一清空为 null。当前异常审计会丢失已有付款上下文，可能妨碍判断是否应重试。
+
+## 8. 计费：运行模型与商业提案分开
+
+| 项目 | 当前 `billing.py` / 看板 | 当前演示文稿提案 |
+|---|---|---|
+| 客户价格 | 数据成本加 17.5% 平台费，账本计算 | US$0.50 / query，全包拟议价 |
+| 试用额度 | 标称 US$50；代码为 5,000,000 drops | US$10 / 20 次；扩展 US$20 / 40 次 |
+| 额度覆盖 | 仅覆盖数据成本，平台费照记 | 尚未在运行账本实现 |
+| 结算 | XRP Testnet 真正支付镜像商户 | USD 标价、USDT 结算与执行汇率转换的计划 |
+| 换算 | 固定假设 100,000 drops = US$1 | 1 XRP = 1.44 USDT、1 USDT ≈ US$1 的示例算术 |
+
+将商业提案纳入 PRD 的待落地方案，不把它标记为已实现或已验证经济模型。两套换算假设不一致，不可混用推导利润。当前范围不要求额外实现 RLUSD：原评审记载允许 XRP **或** RLUSD，XRP 已满足该选择项；USDT 是另一个尚未实现的商业方向。
+
+运行计费基线明确：平台费四舍五入到整数 drops；仅确认成功后记账；试用耗尽自动转 PAYG；账户全局且重启清零；没有向贷方真实收款，平台费不进行第二笔链上结算。审计订阅仍为未实现的可选产品。
+
+后续商业验收须统一报价货币、结算网络/资产、试用覆盖范围、实际汇率、费用及退款规则，再使文稿、PRD 和运行账本一致。当前不得承诺已经收取 USD 或结算 USDT。
+
+## 9. 本次验证证据与可复现交付
+
+本会话已完成一次 LEI 测试网镜像采购：
+
+- 请求 ID：`6326D183F8D14934B171CE8B3A0C8D7F`。
+- 金额：20,000 drops；付款余额 100,000,000 → 99,979,990 drops，差额包含 10 drops 网络费。
+- 结果：`phase=delivered`、`confirmed=true`、`chain_result=tesSUCCESS`。
+- [测试网交易凭证](https://testnet.xrpl.org/transactions/B92C9FC50F57E81F0814B46E55A9E59AE789DDABB73E2A8484C1D7EB8318C138)。
+- 浏览器已显示样例结果、确认回执、策略值和对应审计记录。
+
+此成功证据不能代替失败、并发、价格变化、数据时效或恶意元数据测试。既有文档的其他历史交易也不算本次回归结果。
+
+运行入口：`sh start.sh`，看板 `http://127.0.0.1:8000/`。Python 3.11+，依赖在 `requirements.txt`，换机见 [LOCAL_SETUP.md](LOCAL_SETUP.md)。`setup_testnet.py` 创建本地演示钱包，`.env` 权限 600 且不提交。静态文稿可单独运行，但它不是业务 API。
+
+正常演示按一次仅一个请求操作。当前全局 STATE、缺少并发任务隔离、幂等及认证，不能称为多用户服务。链上结算速度不承诺 3–5 秒；当前没有可支撑 SLA 的延迟分布测试。
+
+## 10. 更新后的执行优先级
+
+| 优先级 | 工作包 | 完成标准 |
+|---|---|---|
+| P0 | 终态、异常与安全显示 | 覆盖成功、区间外、无候选、策略测试完成、失败、未确认；无无限轮询或错误成功标题；外部字符串不能注入 HTML |
+| P0 | 付款前一致性和运行完整性 | 签名前核验路由/供应商、amount、payTo、asset、network 与预算；报价变化即停止并记录；失败保留已有哈希；单运行互斥或任务隔离，避免重复支付及额度竞态 |
+| P1 | 完整策略约束 | 先触发后探测；可解释性用途检查；类别时效及真实数据时点验证；拒绝原因可审计 |
+| P1 | 可编辑且持久化的策略 | 四项字段可保存并跨重启保留；不可修改约束；策略版本随请求固定并入审计 |
+| P1 | 完整发现与真实数据交付 | 从实际目录按请求搜索，保留已配置资源作为明确 fallback；验证同类多资源选优；对受支持网络实际供应商付款并获取对应请求的数据 |
+| P2 | 审计、人审和场景演示 | CSV/PDF 字段一致；有可见人审队列；搜索与详情；UI 可选无需付款的 guardrail 场景 |
+| P2 | 商业模型统一 | 实现并核验最终采用的客户报价、额度和结算方案；同步账本和文稿；不混用静态汇率假设 |
+
+旧 Phase 4 的“需用户先提供任何 Bazaar endpoint”不再是整体阻塞：项目已有两个可探测资源和 schema。下一步应验证目录接口的实际可用性、查询与认证约定，以及供应商是否支持目标结算网络；已存在的资源资料可直接用于适配器工作。
+
+本次修订只更新本文件的产品基线与完成状态，不代表上述待实现工作已经开发、验收或授权上线。

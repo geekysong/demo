@@ -220,7 +220,9 @@
   // Opening this demo directly from Finder gives it a file:// origin. In that
   // mode, route API calls to the local Testnet backend instead of trying to
   // fetch impossible file:///run and file:///status URLs.
-  const API_BASE = location.protocol === 'file:' ? 'http://127.0.0.1:8001' : '';
+  const API_BASE = location.protocol === 'file:' ||
+    (['localhost', '127.0.0.1'].includes(location.hostname) && location.port === '8765')
+    ? 'http://127.0.0.1:8000' : '';
   const apiUrl = (path) => `${API_BASE}${path}`;
   const runBtn = document.getElementById('runBtn');
   const resetBtn = document.getElementById('resetBtn');
@@ -421,11 +423,19 @@
           trigger_reason: `applicant score 612 (gray zone) — lender risk engine requested ${dataTypeLabel}`,
         }),
       });
+      if (!res.headers.get('content-type')?.includes('application/json')) {
+        throw new Error('Business backend unavailable. Start sh start.sh and open http://127.0.0.1:8000/');
+      }
       const data = await res.json();
+      if (!res.ok || !data.started) {
+        throw new Error(data.error || data.detail || `Run rejected (HTTP ${res.status})`);
+      }
       addConsoleLine(`backend run started, run_id=${data.run_id}`);
     } catch(e) {
       addConsoleLine(`failed to start run: ${e}`, 'err');
+      statusPill.textContent = 'failed'; statusPill.className = 'status-pill';
       runBtn.disabled = false;
+      resetBtn.disabled = false;
       return;
     }
     startPolling();
@@ -539,6 +549,10 @@
             <div class="field-v" style="font-size:16px;">${p.trust_min} / 100</div>
           </div>
           <div class="card locked-card" style="grid-column:1/-1;">
+    <h3>No qualifying candidate <span class="locked-badge">HARD STOP</span></h3>
+    <p>Stop before purchase and flag the request for human review. Never force-select a vendor or relax policy automatically.</p>
+  </div>
+  <div class="card locked-card" style="grid-column:1/-1;">
             <h3>🔒 Category blacklist <span class="locked-badge">LENDER-LOCKED — NOT EDITABLE</span></h3>
             <ul>${bl}</ul>
             <div class="locked-note">Per PRD Section 5: this is a hard, non-negotiable constraint. The Agent cannot override it "for business need," and per Section 8 it is not a judgment call the Agent makes at runtime — it ships hardcoded and stays that way in this UI.</div>

@@ -565,6 +565,15 @@
     .mapping-table td:nth-child(2) { font-weight: 600; }
     .closing-line { margin-top: clamp(18px, 2.2vh, 26px); text-align: right; font-family: var(--serif); font-size: clamp(20px, 1.9vw, 30px); }
 
+    .quote-table th:first-child { width: 40%; }
+    .quote-table .small-note { font-size: 14px; color: var(--ink-soft); }
+    .swimlane { width: 100%; max-height: 42vh; overflow: visible; font-family: var(--sans); font-size: 16px; }
+    .swimlane .lane-name { font-weight: 600; font-size: 18px; }
+    .integration { margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--rule-strong); }
+    .integration-head { display: flex; gap: 20px; align-items: baseline; margin-bottom: 10px; }
+    .integration-head span { font-size: 12px; color: var(--ink-soft); }
+    .integration code { display: block; padding: 12px; background: var(--green-wash); font-family: var(--mono); font-size: clamp(10px, 1vw, 14px); overflow-wrap: anywhere; }
+    .integration p { margin-top: 10px; font-size: 14px; color: var(--ink-soft); }
     /* Navigation */
     .progress-track {
       position: fixed;
@@ -675,7 +684,7 @@
       <div class="slide-body">
         <div class="scenario">
           <div class="scenario-copy">
-            <p>The core bureau file leaves a gray-zone applicant unresolved. The officer knows which context is missing, but cannot find a reliable source for it. The case is stuck.</p>
+            <p>The applicant works in the legal industry. The core bureau file leaves the case unresolved: could changes in the legal industry affect their income? The officer needs reliable context before deciding.</p>
             <div class="decision-block" aria-label="Decision remains open">
               <div class="choice"><span>Core bureau file</span><span class="mark">Inconclusive</span></div>
               <div class="choice"><span>Supplemental data source</span><span class="mark">Not found</span></div>
@@ -686,7 +695,7 @@
             <img src="assets/relay-loan-officer-v1.png" alt="An overwhelmed loan officer at a desk reviewing an incomplete applicant file">
             <div class="data-question country">This country's economic conditions</div>
             <div class="data-question industry">
-              <strong>Changes in the science industry</strong>
+              <strong>Changes in the legal industry</strong>
               <span class="detail">Could a major shift materially affect the applicant's income?</span>
             </div>
             <span class="question-mark one" aria-hidden="true">?</span>
@@ -795,63 +804,7 @@
       </footer>
     </section>
 
-    <section class="slide" aria-labelledby="slide-4-title">
-      <header class="slide-head">
-        <div>
-          <p class="eyebrow">Demo</p>
-          <h2 id="slide-4-title">Live shopping view</h2>
-        </div>
-        <div class="folio">04 / 07</div>
-      </header>
-      <div class="slide-body">
-        <div class="shopping-view">
-          <div>
-            <div class="sample-label">Illustrative sample data, not live production output</div>
-            <table aria-label="Illustrative Relay candidate vendor table">
-              <thead>
-                <tr>
-                  <th>Candidate</th>
-                  <th>Price / query</th>
-                  <th>Trust score</th>
-                  <th>Policy result</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr class="selected">
-                  <td>Vendor A</td>
-                  <td class="data">US$0.80</td>
-                  <td class="data">92</td>
-                  <td><span class="status selected">Selected</span></td>
-                </tr>
-                <tr>
-                  <td>Vendor B</td>
-                  <td class="data">US$0.45</td>
-                  <td class="data">61</td>
-                  <td><span class="status review">Human review</span></td>
-                </tr>
-                <tr class="excluded">
-                  <td>Vendor C</td>
-                  <td class="data">US$1.20</td>
-                  <td class="data">38</td>
-                  <td><span class="status excluded">Excluded</span></td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-          <div class="flowline" aria-label="Relay shopping and settlement flow">
-            <div class="flowstep"><span class="step-index">01</span>Discover</div>
-            <div class="flowstep"><span class="step-index">02</span>Filter</div>
-            <div class="flowstep"><span class="step-index">03</span><span class="mono">HTTP 402</span></div>
-            <div class="flowstep"><span class="step-index">04</span>Pay</div>
-            <div class="flowstep"><span class="step-index">05</span>Settle on XRPL</div>
-          </div>
-        </div>
-      </div>
-      <footer class="slide-foot">
-        <div class="source">Source: User-specified demo sample. Prices and trust scores are illustrative only and do not describe live Bazaar vendors.</div>
-        <div class="brand-mark">Relay</div>
-      </footer>
-    </section>
+    <section class="slide" aria-labelledby="slide-4-title"><header class="slide-head"><div><p class="eyebrow">x402 unit pricing</p><h2 id="slide-4-title">Vendor quotes, priced per query</h2></div><div class="folio">04 / 07</div></header><div class="slide-body"><div class="shopping-view"><div><p class="sample-label">Documented marketplace quotes · Testnet mirrors</p><table class="quote-table" aria-label="Documented XRP vendor quotes and illustrative USDT equivalents"><thead><tr><th>Resource</th><th>XRP / query</th><th>USDT equivalent / query</th></tr></thead><tbody><tr><td><strong>CompliancePulse</strong><br><span class="small-note">Global LEI lookup</span></td><td class="data">0.0200 XRP</td><td class="data green">≈ 0.0288 USDT</td></tr><tr><td><strong>MacroPulse</strong><br><span class="small-note">BLS wage benchmarks</span></td><td class="data">0.0200 XRP</td><td class="data green">≈ 0.0288 USDT</td></tr></tbody></table></div><p class="clarifier">Relay selects the resource for the requested data category, then checks policy and the vendor's <span class="mono">HTTP 402</span> quote before paying.</p><div class="flowline"><div class="flowstep"><span class="step-index">01</span>Discover</div><div class="flowstep"><span class="step-index">02</span>Filter</div><div class="flowstep"><span class="step-index">03</span>Read quote</div><div class="flowstep"><span class="step-index">04</span>Sign payment</div><div class="flowstep"><span class="step-index">05</span>Settle on XRPL</div></div></div></div><footer class="slide-foot"><div class="source">Source: <a href="MARKETPLACE_TESTNET.md">Documented marketplace declarations</a>: 20,000 drops = 0.02 XRP per query. Illustration assumes 1 XRP = 1.44 USDT; this is not a live FX quote or a vendor USDT offer. Demo pays XRP to local Testnet mirrors and returns advertised samples.</div><div class="brand-mark">Relay</div></footer></section>
 
     <section class="slide" aria-labelledby="slide-5-title">
       <header class="slide-head">
@@ -863,7 +816,7 @@
       </header>
       <div class="slide-body">
         <div class="policy-intro">
-          <p>Relay may compare vendors inside the permitted space. These controls define the boundary and the stop conditions.</p>
+          <p>All four controls appear in Configuration (Screen 2). The demo displays effective values read-only; the backend enforces them.</p>
         </div>
         <table class="policy-table" aria-label="Relay policy guardrails">
           <thead>
@@ -891,97 +844,21 @@
             </tr>
             <tr>
               <td>Per-applicant cumulative cap</td>
-              <td>Stop incremental purchases when total spend reaches the applicant limit.</td>
+              <td>Reject a purchase if it would take total applicant spend above the limit.</td>
               <td><span class="enforcement">Cumulative limit</span></td>
             </tr>
           </tbody>
         </table>
       </div>
       <footer class="slide-foot">
-        <div class="source">Source: Relay PRD v2 Policy Matrix. No policy thresholds are invented on this slide.</div>
+        <div class="source">Implementation: Configuration / Screen 2 and /policy-config; enforcement in policy_filter.py. Per-transaction cap: 100,000 drops (0.1 XRP). Per-applicant cap: 500,000 drops (0.5 XRP).</div>
         <div class="brand-mark">Relay</div>
       </footer>
     </section>
 
-    <section class="slide" aria-labelledby="slide-6-title">
-      <header class="slide-head">
-        <div>
-          <p class="eyebrow">Business model</p>
-          <h2 id="slide-6-title">A <span class="mono">0.50 USDT</span> query leaves a <span class="mono">0.4712 USDT</span> gross spread</h2>
-        </div>
-        <div class="folio">06 / 07</div>
-      </header>
-      <div class="slide-body">
-        <div class="model-grid">
-          <div class="pricing-ledger fx-pricing">
-            <div class="pricing-row">
-              <div class="name">Lender query price</div>
-              <div class="value"><strong>Proposed all-in price</strong><br><span class="mono green">0.5000 USDT</span></div>
-            </div>
-            <div class="pricing-row">
-              <div class="name">Vendor cost in USDT</div>
-              <div class="value">Convert the XRP quote at purchase time.<br><span class="mono">0.02 XRP × 1.44 = 0.0288 USDT</span></div>
-            </div>
-            <div class="pricing-row">
-              <div class="name">Gross spread per query</div>
-              <div class="value">Query revenue less vendor cost.<br><span class="mono green">0.5000 − 0.0288 = 0.4712 USDT</span></div>
-            </div>
-            <div class="pricing-row">
-              <div class="name">Illustrative gross margin</div>
-              <div class="value">Before network, operating, compliance, and FX costs.<br><span class="mono">94.2%</span></div>
-            </div>
-          </div>
-          <aside class="trial-block revenue-block">
-            <div class="eyebrow">Starter trial credit</div>
-            <span class="metric">10 USDT</span>
-            <p><span class="mono">20 queries</span> at the proposed all-in price. This is enough to test both data categories across multiple gray-zone cases.</p>
-            <div class="fee-note">
-              <div><strong>Extended trial option:</strong> <span class="mono">20 USDT = 40 queries</span>.</div>
-              <div><strong>Billing currency:</strong> quote the lender in USDT and convert the vendor's XRP price at purchase time.</div>
-              <div><strong>Optional add-on:</strong> audit-dashboard subscription for policy controls, receipts, and review.</div>
-            </div>
-          </aside>
-        </div>
-      </div>
-      <footer class="slide-foot">
-        <div class="source">Sources: demo vendor quote in <a href="MARKETPLACE_TESTNET.md">MARKETPLACE_TESTNET.md</a>; <a href="https://www.binance.com/en/markets/spot_margin-USDT?p=3" target="_blank" rel="noopener">Binance XRP/USDT market</a>; <a href="https://www.binance.us/price" target="_blank" rel="noopener">Binance.US USDT/USD market</a>. Conversion snapshot: <span class="mono">1 XRP ≈ 1.44 USDT</span> on <span class="mono">4 Sep 2026</span>; <span class="mono">1 USDT ≈ US$1</span>. The <span class="mono">0.50 USDT</span> query price and <span class="mono">10 USDT</span> trial credit are revised commercial assumptions. Illustrative estimate — not market-validated.</div>
-        <div class="brand-mark">Relay</div>
-      </footer>
-    </section>
+    <section class="slide" aria-labelledby="slide-6-title"><header class="slide-head"><div><p class="eyebrow">Business model</p><h2 id="slide-6-title">Customer pricing in USD; settlement in USDT</h2></div><div class="folio">06 / 07</div></header><div class="slide-body"><div class="model-grid"><div class="pricing-ledger fx-pricing"><div class="pricing-row"><div class="name">Customer price</div><div class="value"><strong class="mono green">US$0.50 / query</strong><br>Proposed all-in price, quoted in USD.</div></div><div class="pricing-row"><div class="name">USD → USDT</div><div class="value"><span class="mono">1 USDT ≈ US$1.00</span><br>Illustration: US$0.50 → 0.5000 USDT.</div></div><div class="pricing-row"><div class="name">Vendor cost</div><div class="value"><span class="mono">0.02 XRP × 1.44 = 0.0288 USDT</span><br>≈ US$0.0288 under the same FX assumptions.</div></div><div class="pricing-row"><div class="name">Gross spread</div><div class="value"><span class="mono green">US$0.50 − US$0.0288 = US$0.4712</span><br>94.2% before network, operating, compliance and FX costs.</div></div></div><aside class="trial-block revenue-block"><div class="eyebrow">Customer trial credit</div><span class="metric">US$10</span><p>20 queries at US$0.50 each.</p><div class="fee-note"><div><strong>Extended trial:</strong> US$20 = 40 queries.</div><div><strong>Customer experience:</strong> prices and credits in USD.</div><div><strong>Settlement model:</strong> Relay converts to USDT using the execution rate. USDT/USD can deviate from 1.00.</div></div></aside></div></div><footer class="slide-foot"><div class="source">Proposed commercial model. FX assumptions for arithmetic: 1 XRP = 1.44 USDT; 1 USDT = US$1.00. These are not live rates. Current Testnet implementation settles in XRP; USD billing and USDT settlement shown here are planned.</div><div class="brand-mark">Relay</div></footer></section>
 
-    <section class="slide" aria-labelledby="slide-7-title">
-      <header class="slide-head">
-        <div>
-          <p class="eyebrow">Challenge mapping</p>
-          <h2 id="slide-7-title">The six x402 steps in Relay</h2>
-        </div>
-        <div class="folio">07 / 07</div>
-      </header>
-      <div class="slide-body">
-        <table class="mapping-table" aria-label="Mapping of the six XRPL x402 workflow steps to Relay">
-          <thead>
-            <tr>
-              <th>Step</th>
-              <th>Challenge flow</th>
-              <th>Relay implementation</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr><td>01</td><td>Request resource</td><td>After Bazaar discovery and policy filtering, Relay calls the selected underwriting-data endpoint.</td></tr>
-            <tr><td>02</td><td>Merchant returns <span class="mono">HTTP 402</span></td><td>Relay reads the price, payment address, and facilitator details from the payment requirements.</td></tr>
-            <tr><td>03</td><td>Send presigned transaction</td><td>The Relay wallet signs an XRPL Payment for the approved amount.</td></tr>
-            <tr><td>04</td><td>Obtain receipt</td><td>The facilitator verifies the on-chain payment and issues a signed receipt.</td></tr>
-            <tr><td>05</td><td>Retry with receipt</td><td>Relay resends the original data request with payment proof.</td></tr>
-            <tr><td>06</td><td>Merchant delivers</td><td>The vendor returns the supplemental signal. Relay records the vendor, policy result, price, receipt, and delivery status.</td></tr>
-          </tbody>
-        </table>
-        <div class="closing-line">Relay — Version <span class="mono">2.0</span>, hackathon demo build.</div>
-      </div>
-      <footer class="slide-foot">
-        <div class="source">Source: <a href="https://xrpl.org/docs/agents/agentic-payments-x402" target="_blank" rel="noopener">XRPL, Agentic Payments with X402 on the XRP Ledger</a>; Relay PRD v2 and workspace demo implementation notes.</div>
-        <div class="brand-mark">Relay</div>
-      </footer>
-    </section>
+    <section class="slide" aria-labelledby="slide-7-title"><header class="slide-head"><div><p class="eyebrow">Integration & settlement</p><h2 id="slide-7-title">One request starts the Relay workflow</h2></div><div class="folio">07 / 07</div></header><div class="slide-body"><svg class="swimlane" viewBox="0 0 1120 414" role="img" aria-labelledby="flow-title flow-desc"><title id="flow-title">Relay request and settlement swimlanes</title><desc id="flow-desc">Lender requests data. Relay requests a vendor resource and receives HTTP 402. Relay retries with a signed payment. Vendor invokes the facilitator to verify and settle on XRPL. Vendor returns data and receipt to Relay, which checks confirmation and makes the result available to the lender.</desc><defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#2F6F4E"/></marker></defs><text x="90" y="23" text-anchor="middle" class="lane-name">Lender</text><line x1="90" x2="90" y1="40" y2="404" stroke="#182234" stroke-opacity=".22" stroke-dasharray="4 5"/><text x="365" y="23" text-anchor="middle" class="lane-name">Relay agent</text><line x1="365" x2="365" y1="40" y2="404" stroke="#182234" stroke-opacity=".22" stroke-dasharray="4 5"/><text x="700" y="23" text-anchor="middle" class="lane-name">Vendor / mirror</text><line x1="700" x2="700" y1="40" y2="404" stroke="#182234" stroke-opacity=".22" stroke-dasharray="4 5"/><text x="1010" y="23" text-anchor="middle" class="lane-name">Facilitator + XRPL</text><line x1="1010" x2="1010" y1="40" y2="404" stroke="#182234" stroke-opacity=".22" stroke-dasharray="4 5"/><text x="227.5" y="62" text-anchor="middle">Request data</text><line x1="90" x2="365" y1="72" y2="72" stroke="#2F6F4E" stroke-width="2" marker-end="url(#arrow)"/><text x="532.5" y="106" text-anchor="middle">01 · Request resource</text><line x1="365" x2="700" y1="116" y2="116" stroke="#2F6F4E" stroke-width="2" marker-end="url(#arrow)"/><text x="532.5" y="150" text-anchor="middle">02 · HTTP 402 + quote</text><line x1="700" x2="365" y1="160" y2="160" stroke="#2F6F4E" stroke-width="2" marker-end="url(#arrow)"/><text x="532.5" y="194" text-anchor="middle">03 · Retry + signed payment</text><line x1="365" x2="700" y1="204" y2="204" stroke="#2F6F4E" stroke-width="2" marker-end="url(#arrow)"/><text x="855.0" y="238" text-anchor="middle">04 · Verify + settle</text><line x1="700" x2="1010" y1="248" y2="248" stroke="#2F6F4E" stroke-width="2" marker-end="url(#arrow)"/><text x="855.0" y="282" text-anchor="middle">05 · Settlement receipt</text><line x1="1010" x2="700" y1="292" y2="292" stroke="#2F6F4E" stroke-width="2" marker-end="url(#arrow)"/><text x="532.5" y="326" text-anchor="middle">06 · Data + receipt</text><line x1="700" x2="365" y1="336" y2="336" stroke="#2F6F4E" stroke-width="2" marker-end="url(#arrow)"/><text x="227.5" y="370" text-anchor="middle">Confirmed result via /status</text><line x1="365" x2="90" y1="380" y2="380" stroke="#2F6F4E" stroke-width="2" marker-end="url(#arrow)"/></svg><div class="integration"><div class="integration-head"><strong>One-line API call</strong><span>Local demo server running with wallet configuration loaded</span></div><code>curl -X POST http://localhost:8000/run -H 'Content-Type: application/json' -d '{"data_type":"industry_income_benchmarks"}'</code><p>Returns a run ID; read <span class="mono">GET /status</span> for confirmed data and receipt. Relay handles vendor access and payment; the lender connects to one Relay API.</p></div></div><footer class="slide-foot"><div class="source">Flow follows orchestrator.py: signed retry → vendor invokes facilitator → data and receipt → independent XRPL confirmation. No per-vendor integration is needed. The command starts an asynchronous local demo run; it is not an installer or a complete production integration.</div><div class="brand-mark">Relay</div></footer></section>
 
     <div class="progress-track" aria-hidden="true"><div class="progress-bar" id="progressBar"></div></div>
     <nav class="nav" aria-label="Slide navigation">
