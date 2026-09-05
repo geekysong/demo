@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Relay — Procurement Terminal (live)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink: #12161C; --panel: #1A1F27; --panel-raised: #1F2530;
+    --line: #2C333D; --line-soft: #232A33;
+    --text: #E7E4DA; --text-dim: #8B93A0; --text-faint: #5B6270;
+    --brand: #6FA8C9; --amber: #E8A33D; --green: #5FB88A; --rust: #C9614A;
+    --radius: 3px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{background:var(--ink);color:var(--text);font-family:'IBM Plex Mono',monospace;font-size:13px;line-height:1.55;}
+  .wrap{max-width:980px;margin:0 auto;padding:28px 24px 60px;}
+  header{display:flex;align-items:baseline;justify-content:space-between;padding-bottom:18px;border-bottom:1px solid var(--line);margin-bottom:22px;}
+  .brand{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:21px;letter-spacing:-.01em;}
+  .brand span{color:var(--brand);}
+  .brand-sub{color:var(--text-faint);font-size:12px;margin-top:3px;}
+  .live-badge{display:inline-block;margin-left:8px;padding:1px 6px;border:1px solid var(--green);color:var(--green);border-radius:var(--radius);font-size:10px;vertical-align:middle;}
+  .header-right{display:flex;align-items:center;gap:14px;}
+  .nav-link{font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:12px;color:var(--text-dim);text-decoration:none;border:1px solid var(--line);padding:8px 12px;border-radius:var(--radius);transition:all .2s ease;}
+  .nav-link:hover{color:var(--text);border-color:var(--brand);}
+  .tabbar{display:flex;gap:8px;}
+  .tab-btn{font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:12.5px;background:transparent;color:var(--text-dim);border:1px solid var(--line);padding:9px 14px;border-radius:var(--radius);cursor:pointer;transition:all .2s ease;}
+  .tab-btn:hover{color:var(--text);}
+  .tab-btn.active{background:var(--panel-raised);color:var(--brand);border-color:var(--brand);}
+  .tab-panel{display:none;}
+  .tab-panel.active{display:block;}
+  .panel-toolbar{display:flex;align-items:center;gap:12px;margin-bottom:18px;}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:18px;}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:16px 18px;}
+  .card h3{font-family:'Space Grotesk',sans-serif;font-size:13px;margin:0 0 12px;color:var(--text);}
+  .editable-badge{display:inline-block;font-size:9.5px;padding:1px 6px;border-radius:var(--radius);border:1px solid var(--brand);color:var(--brand);margin-left:8px;vertical-align:middle;}
+  .locked-card{background:#231B1B;border:1px solid rgba(201,97,74,.45);}
+  .locked-card h3{color:var(--rust);display:flex;align-items:center;gap:8px;}
+  .locked-badge{display:inline-block;font-size:9.5px;padding:1px 6px;border-radius:var(--radius);border:1px solid var(--rust);color:var(--rust);}
+  .locked-card ul{color:#B08A82;margin:0;padding-left:18px;}
+  .locked-card li{margin-bottom:4px;}
+  .locked-note{color:#8C6E68;font-size:11px;margin-top:10px;padding-top:10px;border-top:1px dashed rgba(201,97,74,.3);}
+  .card ul{margin:0;padding-left:18px;}
+  .card li{margin-bottom:4px;color:var(--text-dim);}
+  table.audit{width:100%;border-collapse:collapse;font-size:11.5px;}
+  table.audit th,table.audit td{border-bottom:1px solid var(--line-soft);padding:8px 10px;text-align:left;vertical-align:top;}
+  table.audit th{color:var(--text-faint);font-weight:600;font-size:10.5px;text-transform:uppercase;letter-spacing:.03em;}
+  td.mono{color:var(--text-dim);word-break:break-all;}
+  .status-delivered{color:var(--green);} .status-escalated{color:var(--amber);}
+  .status-failed{color:var(--rust);} .status-test{color:var(--brand);}
+  a.hash{color:var(--brand);}
+  .note{color:var(--text-faint);font-size:11px;margin-top:16px;}
+  details summary{cursor:pointer;color:var(--text-dim);}
+  @media (max-width:720px){.grid2{grid-template-columns:1fr;}}
+  .status-pill{font-size:11px;padding:5px 10px;border:1px solid var(--line);border-radius:var(--radius);color:var(--text-dim);transition:all .25s ease;}
+  .status-pill.running{color:var(--amber);border-color:rgba(232,163,61,.4);}
+  .status-pill.done{color:var(--green);border-color:rgba(95,184,138,.4);}
+  .status-pill.error{color:var(--rust);border-color:rgba(201,97,74,.4);}
+  button{font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:13px;background:var(--brand);color:#0F1620;border:none;padding:9px 16px;border-radius:var(--radius);cursor:pointer;}
+  button:hover{opacity:.88;} button:active{transform:translateY(1px);}
+  button.ghost{background:transparent;color:var(--text-dim);border:1px solid var(--line);}
+  button:disabled{opacity:.35;cursor:not-allowed;}
+  section{margin-bottom:22px;}
+  .section-label{font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:12px;color:var(--text-dim);margin-bottom:10px;display:flex;align-items:center;gap:8px;}
+  .step-tag{font-size:10px;color:var(--text-faint);border:1px solid var(--line);padding:1px 6px;border-radius:var(--radius);}
+  .intake{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:16px 18px;}
+  .intake-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;}
+  .field-k{color:var(--text-faint);font-size:11px;margin-bottom:3px;}
+  .field-v{color:var(--text);font-size:13.5px;} .field-v.accent{color:var(--amber);}
+  select.field-v{width:100%;background:var(--panel-raised);border:1px solid var(--line);border-radius:var(--radius);padding:7px 8px;color:var(--text);font-family:'IBM Plex Mono',monospace;}
+  .policy-strip{margin-top:14px;padding-top:14px;border-top:1px dashed var(--line-soft);display:flex;flex-wrap:wrap;gap:10px 22px;font-size:11.5px;color:var(--text-dim);}
+  .policy-strip b{color:var(--text);font-weight:500;}
+  .rail{display:flex;border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;}
+  .rail-step{flex:1;padding:10px 8px;text-align:center;border-right:1px solid var(--line);background:var(--panel);color:var(--text-faint);font-size:10.5px;transition:background .3s,color .3s;}
+  .rail-step:last-child{border-right:none;}
+  .rail-step .n{display:block;font-family:'Space Grotesk',sans-serif;font-size:12px;color:var(--text-dim);margin-bottom:3px;}
+  .rail-step.active{background:var(--panel-raised);color:var(--amber);} .rail-step.active .n{color:var(--amber);}
+  .rail-step.complete{color:var(--text);} .rail-step.complete .n{color:var(--green);}
+  .candidates{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;}
+  .candidate{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:13px 14px;opacity:.35;transition:opacity .4s,border-color .4s,background .4s;}
+  .candidate.revealed{opacity:1;}
+  .candidate.accepted{border-color:rgba(95,184,138,.55);background:#1B2620;}
+  .candidate.rejected{border-color:rgba(201,97,74,.4);}
+  .cand-name{font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:13.5px;margin-bottom:8px;}
+  .cand-row{display:flex;justify-content:space-between;font-size:11.5px;color:var(--text-dim);padding:3px 0;border-bottom:1px solid var(--line-soft);}
+  .cand-row:last-of-type{border-bottom:none;} .cand-row .v{color:var(--text);}
+  .verdict{margin-top:10px;font-size:11px;padding:6px 8px;border-radius:var(--radius);display:none;}
+  .candidate.revealed .verdict{display:block;}
+  .verdict.pass{background:rgba(95,184,138,.12);color:var(--green);}
+  .verdict.fail{background:rgba(201,97,74,.12);color:var(--rust);}
+  .marketplace-sources{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .source-card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:14px;}
+  .source-head{display:flex;justify-content:space-between;gap:12px;align-items:baseline;margin-bottom:8px;}
+  .source-name{font-family:'Space Grotesk',sans-serif;font-weight:600;}
+  .source-status{font-size:10px;color:var(--green);}
+  .source-meta{color:var(--text-dim);font-size:11px;margin-bottom:8px;}
+  .sample-block{margin:0;background:#12161C;border:1px solid var(--line-soft);padding:9px;max-height:220px;overflow:auto;color:var(--text-dim);font-size:10.5px;white-space:pre-wrap;word-break:break-word;}
+  .console{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:16px 18px;min-height:96px;}
+  .console-line{display:flex;gap:10px;font-size:12px;color:var(--text-faint);padding:4px 0;opacity:0;transform:translateY(3px);transition:opacity .3s,transform .3s;}
+  .console-line.shown{opacity:1;transform:none;}
+  .console-line .t{color:var(--text-faint);width:64px;flex-shrink:0;}
+  .console-line .m{color:var(--text);} .console-line .m.hash{color:var(--brand);word-break:break-all;}
+  .console-line .m.ok{color:var(--green);} .console-line .m.err{color:var(--rust);}
+  .console-empty{color:var(--text-faint);font-size:12px;}
+  .receipt{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:18px;opacity:0;max-height:0;overflow:hidden;transition:opacity .4s;}
+  .receipt.shown{opacity:1;max-height:900px;padding:18px;}
+  .receipt-head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--line);}
+  .receipt-title{font-family:'Space Grotesk',sans-serif;font-weight:600;color:var(--green);font-size:13.5px;}
+  .receipt-title.err{color:var(--rust);}
+  .receipt-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px 24px;font-size:12px;}
+  .receipt-grid .k{color:var(--text-faint);} .receipt-grid .v{color:var(--text);word-break:break-all;}
+  .receipt-grid .full{grid-column:1/-1;}
+  .receipt-grid .v.hash{color:var(--brand);}
+  .receipt-foot{margin-top:12px;padding-top:12px;border-top:1px dashed var(--line-soft);font-size:11px;color:var(--text-faint);}
+  .receipt-foot a{color:var(--brand);}
+  .verify-badge{display:inline-block;font-size:10px;padding:2px 6px;border-radius:var(--radius);margin-left:6px;}
+  .verify-badge.ok{background:rgba(95,184,138,.15);color:var(--green);}
+  .verify-badge.pending{background:rgba(232,163,61,.15);color:var(--amber);}
+  @media (max-width:720px){.intake-grid{grid-template-columns:repeat(2,1fr);}.candidates,.marketplace-sources{grid-template-columns:1fr;}.rail{flex-wrap:wrap;}.rail-step{flex:1 1 25%;border-bottom:1px solid var(--line);}.receipt-grid{grid-template-columns:1fr;}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div>
+      <div class="brand"><span>RE</span>LAY <span class="live-badge">LIVE — testnet</span></div>
+      <div class="brand-sub">procurement terminal — real x402 / XRPL Testnet settlement</div>
+    </div>
+    <div class="tabbar">
+      <button class="tab-btn active" data-tab="screen1">Screen 1 · Live Shopping</button>
+      <button class="tab-btn" data-tab="screen2">Screen 2 · Policy Config</button>
+      <button class="tab-btn" data-tab="screen3">Screen 3 · Audit Ledger</button>
+    </div>
+  </header>
+
+  <div id="panel-screen1" class="tab-panel active">
+
+  <div class="panel-toolbar">
+    <div class="status-pill" id="statusPill">idle</div>
+    <button class="ghost" id="resetBtn" disabled>Reset</button>
+    <button id="runBtn">Run flow</button>
+  </div>
+
+  <section>
+    <div class="section-label"><span class="step-tag">1</span>Trigger — lender risk engine</div>
+    <div class="intake">
+      <div class="intake-grid">
+        <div><div class="field-k">applicant score</div><div class="field-v accent" id="intakeScore">612 — gray zone</div></div>
+        <div><div class="field-k">data gap</div><select class="field-v" id="dataTypeSelect">
+          <option value="business_registration_status">business registration status</option>
+          <option value="industry_income_benchmarks">industry income benchmarks</option>
+        </select></div>
+        <div><div class="field-k">region</div><div class="field-v" id="intakeRegion">US</div></div>
+        <div><div class="field-k">freshness required</div><div class="field-v" id="intakeFreshness">≤ 30 days</div></div>
+      </div>
+      <div class="policy-strip" id="policyStrip">
+        <div>trust min <b>70</b></div>
+        <div>per-txn cap <b>$1.00</b></div>
+        <div>category <b id="policyCategory">business registration status — whitelisted</b></div>
+        <div>explainability <b>required if adverse</b></div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="section-label"><span class="step-tag">LIVE</span>t54 XRPL AI Hub sources — real 402 schema + sample, payment mirrored on Testnet</div>
+    <div class="marketplace-sources" id="marketplaceSources"><div class="note">loading live marketplace declarations…</div></div>
+  </section>
+
+  <section>
+    <div class="section-label">Flow — Section 4 steps <span style="color:var(--text-faint); font-weight:400;">(each step below only advances when the backend reports it — poll it yourself at <code>/status</code>)</span></div>
+    <div class="rail" id="rail">
+      <div class="rail-step" data-step="1"><span class="n">1</span>Trigger</div>
+      <div class="rail-step" data-step="2"><span class="n">2</span>Discover</div>
+      <div class="rail-step" data-step="3"><span class="n">3</span>Candidates</div>
+      <div class="rail-step" data-step="4"><span class="n">4</span>Filter</div>
+      <div class="rail-step" data-step="5"><span class="n">5</span>Quote (402)</div>
+      <div class="rail-step" data-step="6"><span class="n">6</span>Pay</div>
+      <div class="rail-step" data-step="7"><span class="n">7</span>Settle (XRPL)</div>
+      <div class="rail-step" data-step="8"><span class="n">8</span>Deliver</div>
+    </div>
+  </section>
+
+  <section>
+    <div class="section-label"><span class="step-tag">3–4</span>Bazaar candidates → Policy Matrix filter — computed server-side by <code>policy_filter.py</code></div>
+    <div class="candidates" id="candidates"></div>
+  </section>
+
+  <section>
+    <div class="section-label"><span class="step-tag">5–7</span>x402 quote → wallet payment → XRPL settlement</div>
+    <div class="console" id="console"><div class="console-empty" id="consoleEmpty">waiting for flow to run</div></div>
+  </section>
+
+  <section>
+    <div class="section-label"><span class="step-tag">8</span>Delivery + independent on-chain verification</div>
+    <div class="receipt" id="receipt"></div>
+  </section>
+
+  </div>
+
+  <div id="panel-screen2" class="tab-panel">
+    <div id="screen2-content"><div class="note">loading…</div></div>
+  </div>
+
+  <div id="panel-screen3" class="tab-panel">
+    <div class="panel-toolbar">
+      <button class="ghost" id="refreshAuditBtn">Refresh</button>
+      <a class="nav-link" id="auditExportLink" href="/audit.csv">Export CSV</a>
+    </div>
+    <div id="screen3-content"><div class="note">loading…</div></div>
+  </div>
+
+</div>
+
+<script>
+(function(){
+  // Opening this demo directly from Finder gives it a file:// origin. In that
+  // mode, route API calls to the local Testnet backend instead of trying to
+  // fetch impossible file:///run and file:///status URLs.
+  const API_BASE = location.protocol === 'file:' ? 'http://127.0.0.1:8001' : '';
+  const apiUrl = (path) => `${API_BASE}${path}`;
+  const runBtn = document.getElementById('runBtn');
+  const resetBtn = document.getElementById('resetBtn');
+  const statusPill = document.getElementById('statusPill');
+  const railSteps = Array.from(document.querySelectorAll('.rail-step'));
+  const candidatesEl = document.getElementById('candidates');
+  const consoleEl = document.getElementById('console');
+  const receipt = document.getElementById('receipt');
+  document.getElementById('auditExportLink').href = apiUrl('/audit.csv');
+
+  let pollTimer = null;
+  let seenPhases = new Set();
+  let sawCandidates = false;
+
+  const PHASE_ORDER = ["idle","candidates","quote","quoted","paying","settling","confirming","delivered"];
+
+  function railStateFor(phase){
+    const idx = PHASE_ORDER.indexOf(phase);
+    const complete = new Set(), active = new Set();
+    if (idx >= 0) {
+      if (idx >= 1) { complete.add(1); complete.add(2); }
+      if (idx >= 1) { if (phase === "candidates") active.add(3); else complete.add(3); }
+      if (idx >= 1) { if (phase === "candidates") active.add(4); else if (idx > 1) complete.add(4); }
+      if (idx >= 2) { if (phase === "quote" || phase === "quoted") active.add(5); else if (idx > 2) complete.add(5); }
+      if (idx >= 4) { if (phase === "paying") active.add(6); else if (idx > 4) complete.add(6); }
+      if (idx >= 5) { if (phase === "settling" || phase === "confirming") active.add(7); else if (idx > 6) complete.add(7); }
+      if (phase === "delivered") complete.add(8);
+    }
+    return {complete, active};
+  }
+
+  function renderRail(phase){
+    const {complete, active} = railStateFor(phase);
+    railSteps.forEach(el => {
+      const n = Number(el.dataset.step);
+      el.classList.toggle('complete', complete.has(n));
+      el.classList.toggle('active', active.has(n));
+    });
+  }
+
+  function renderCandidates(selected, rejected){
+    if (!selected || sawCandidates) return;
+    sawCandidates = true;
+    const all = [selected, ...rejected].sort((a,b) => a.id.localeCompare(b.id));
+    candidatesEl.innerHTML = all.map(c => {
+      const isSelected = c.id === selected.id;
+      const cls = isSelected ? 'accepted' : 'rejected';
+      const verdictCls = isSelected ? 'pass' : 'fail';
+      const verdictText = isSelected
+        ? 'selected — passes trust, freshness, whitelist'
+        : `rejected — ${c.rejection_reasons.join('; ')}`;
+      return `<div class="candidate revealed ${cls}">
+        <div class="cand-name">${esc(c.name)}</div>
+        <div class="cand-row"><span>price</span><span class="v">${esc(c.price_label || (c.price_drops + ' drops'))}</span></div>
+        <div class="cand-row"><span>trust score</span><span class="v">${c.trust_score}</span></div>
+        <div class="cand-row"><span>freshness</span><span class="v">${c.freshness_days} days</span></div>
+        <div class="cand-row"><span>source rail</span><span class="v">${esc(c.source_network || '—')} → xrpl:1 mirror</span></div>
+        <div class="cand-row"><span>schema</span><span class="v">${esc(c.schema)}</span></div>
+        <div class="verdict ${verdictCls}">${esc(verdictText)}</div>
+      </div>`;
+    }).join('');
+  }
+
+  function addConsoleLine(msg, kind){
+    const empty = document.getElementById('consoleEmpty');
+    if (empty) empty.remove();
+    const line = document.createElement('div');
+    line.className = 'console-line';
+    const time = document.createElement('span');
+    time.className = 't'; time.textContent = new Date().toLocaleTimeString();
+    const message = document.createElement('span');
+    message.className = `m ${kind||''}`; message.textContent = msg;
+    line.append(time, message);
+    consoleEl.appendChild(line);
+    requestAnimationFrame(() => requestAnimationFrame(() => line.classList.add('shown')));
+  }
+
+  function onceLog(key, msg, kind){
+    if (seenPhases.has(key)) return;
+    seenPhases.add(key);
+    addConsoleLine(msg, kind);
+  }
+
+  function renderFromState(s){
+    renderRail(s.phase);
+
+    if (s.selected) renderCandidates(s.selected, s.rejected);
+
+    if (s.buyer_address) onceLog('buyer', `Relay Agent wallet (testnet): ${s.buyer_address}`);
+    if (s.balance_before != null) onceLog('bal0', `buyer balance before (on-chain, queried): ${s.balance_before} drops`);
+    if (s.quote) onceLog('quote', `${s.selected.name} → HTTP 402 · quote ${s.quote.amount} drops · payTo ${s.quote.payTo}`);
+    if (s.phase === 'paying') onceLog('paying', `signing XRPL Payment tx with Relay Agent wallet...`);
+    if (s.phase === 'settling') onceLog('settling', `submitted with PAYMENT-SIGNATURE header, server verifying + settling via facilitator...`);
+    if (s.tx_hash) onceLog('txhash', `tx hash received: ${s.tx_hash}`, 'hash');
+    if (s.phase === 'confirming') onceLog('confirming', `independently polling XRPL testnet RPC for tx validation (not trusting facilitator's word alone)...`);
+    if (s.chain_result) onceLog('chainresult', `on-chain result: ${s.chain_result} · validated: ${s.confirmed}`, s.confirmed ? 'ok' : 'err');
+    if (s.balance_after != null) onceLog('bal1', `buyer balance after (on-chain, queried): ${s.balance_after} drops (Δ ${s.balance_after - s.balance_before})`);
+
+    if (s.phase === 'delivered') {
+      statusPill.textContent = 'complete'; statusPill.className = 'status-pill done';
+      renderReceipt(s);
+      stopPolling();
+    } else if (s.phase === 'failed') {
+      statusPill.textContent = 'failed'; statusPill.className = 'status-pill error';
+      onceLog('failed', `FLOW FAILED: ${s.error}`, 'err');
+      renderReceipt(s);
+      stopPolling();
+    } else if (s.phase === 'settlement_unconfirmed') {
+      statusPill.textContent = 'unconfirmed'; statusPill.className = 'status-pill error';
+      renderReceipt(s);
+      stopPolling();
+    } else if (s.phase && s.phase !== 'idle') {
+      statusPill.textContent = s.phase; statusPill.className = 'status-pill running';
+    }
+  }
+
+  function renderReceipt(s){
+    if (s.phase === 'failed') {
+      receipt.innerHTML = `<div class="receipt-head"><div class="receipt-title err">Flow failed</div></div>
+        <div class="receipt-grid"><div class="full"><div class="k">error</div><div class="v">${s.error}</div></div></div>`;
+      receipt.classList.add('shown');
+      return;
+    }
+    const explorerLink = s.tx_hash ? `https://testnet.xrpl.org/transactions/${s.tx_hash}` : null;
+    receipt.innerHTML = `
+      <div class="receipt-head">
+        <div class="receipt-title">Data delivered — settlement independently confirmed on-chain
+          <span class="verify-badge ${s.confirmed ? 'ok':'pending'}">${s.confirmed ? 'tesSUCCESS ✓' : 'unconfirmed'}</span>
+        </div>
+      </div>
+      <div class="receipt-grid">
+        <div><div class="k">selected vendor</div><div class="v">${esc(s.selected.name)}</div></div>
+        <div><div class="k">price paid</div><div class="v">${esc(s.selected.price_label || (s.quote.amount + ' drops'))}</div></div>
+        <div><div class="k">buyer (Relay Agent wallet)</div><div class="v">${s.buyer_address}</div></div>
+        <div><div class="k">payTo (merchant)</div><div class="v">${s.quote.payTo}</div></div>
+        <div><div class="k">balance before</div><div class="v">${s.balance_before} drops</div></div>
+        <div><div class="k">balance after</div><div class="v">${s.balance_after} drops (Δ ${s.balance_after - s.balance_before})</div></div>
+        <div class="full"><div class="k">XRPL transaction hash</div><div class="v hash">${s.tx_hash}</div></div>
+        <div class="full"><div class="k">independent chain lookup</div><div class="v">${s.chain_result} · validated=${s.confirmed}</div></div>
+        <div class="full"><div class="k">rejection reasons logged</div><div class="v">${s.rejected.map(r => r.name + ' — ' + r.rejection_reasons.join('; ')).join(' · ')}</div></div>
+        ${s.delivered ? `
+        <div class="full" style="border-top:1px dashed var(--line-soft);padding-top:10px;margin-top:2px;">
+          <div class="k">purchased data · ${esc(s.delivered.delivery_mode || 'delivered')}</div>
+          <pre class="sample-block">${esc(JSON.stringify(s.delivered.result, null, 2))}</pre>
+        </div>` : ''}
+        ${s.billing ? `
+        <div class="full" style="border-top:1px dashed var(--line-soft);padding-top:10px;margin-top:2px;">
+          <div class="k">Section 3 billing (ledger only — not a second on-chain payment)</div>
+          <div class="v">vendor cost ${s.billing.vendor_price_drops} drops · platform fee (17.5%) ${s.billing.platform_fee_drops} drops
+            · covered by trial credit ${s.billing.covered_by_trial_credit_drops} drops · billed to lender ${s.billing.billed_total_drops} drops
+            · mode: ${s.billing.billing_mode_before} → ${s.billing.billing_mode_after} · trial credit remaining ${s.billing.trial_credit_remaining_drops} drops</div>
+        </div>` : ''}
+      </div>
+      <div class="receipt-foot">Verify independently: <a href="${explorerLink}" target="_blank" rel="noopener">${explorerLink}</a></div>
+    `;
+    receipt.classList.add('shown');
+  }
+
+  async function poll(){
+    try {
+      const res = await fetch(apiUrl('/status'));
+      const s = await res.json();
+      renderFromState(s);
+    } catch(e) {
+      addConsoleLine(`status poll error: ${e}`, 'err');
+    }
+  }
+
+  function startPolling(){
+    if (pollTimer) return;
+    pollTimer = setInterval(poll, 400);
+  }
+  function stopPolling(){
+    if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+    runBtn.disabled = false;
+    resetBtn.disabled = false;
+  }
+
+  async function runFlow(){
+    runBtn.disabled = true;
+    resetBtn.disabled = true;
+    resetUI();
+    statusPill.textContent = 'starting'; statusPill.className = 'status-pill running';
+    try {
+      const dataType = document.getElementById('dataTypeSelect').value;
+      const dataTypeLabel = document.getElementById('dataTypeSelect').selectedOptions[0].textContent;
+      // Section 4 Step 1: send the exact structured request the intake
+      // panel above displays — no more disconnect between what's shown
+      // and what the backend actually evaluates.
+      const res = await fetch(apiUrl('/run'), {
+        method: 'POST',
+        headers: {'content-type': 'application/json'},
+        body: JSON.stringify({
+          applicant_score: 612,
+          data_type: dataType,
+          applicant_region: 'US',
+          freshness_requirement_days: 30,
+          trigger_reason: `applicant score 612 (gray zone) — lender risk engine requested ${dataTypeLabel}`,
+        }),
+      });
+      const data = await res.json();
+      addConsoleLine(`backend run started, run_id=${data.run_id}`);
+    } catch(e) {
+      addConsoleLine(`failed to start run: ${e}`, 'err');
+      runBtn.disabled = false;
+      return;
+    }
+    startPolling();
+  }
+
+  function resetUI(){
+    seenPhases = new Set();
+    sawCandidates = false;
+    railSteps.forEach(s => s.classList.remove('active','complete'));
+    candidatesEl.innerHTML = '';
+    consoleEl.innerHTML = '<div class="console-empty" id="consoleEmpty">waiting for flow to run</div>';
+    receipt.classList.remove('shown');
+    receipt.innerHTML = '';
+    statusPill.textContent = 'idle'; statusPill.className = 'status-pill';
+  }
+
+  runBtn.addEventListener('click', runFlow);
+  resetBtn.addEventListener('click', () => { resetUI(); runBtn.disabled = false; resetBtn.disabled = true; });
+
+  poll();
+
+  // The intake panel's policy-strip used to be hardcoded text that could
+  // silently drift from the real POLICY dict. Load it live instead, same
+  // source of truth Screen 2 uses.
+  (async function loadLivePolicyStrip(){
+    try {
+      const p = await (await fetch(apiUrl('/policy.json'))).json();
+      const dataTypeLabel = document.getElementById('dataTypeSelect').selectedOptions[0].textContent;
+      document.getElementById('policyStrip').innerHTML = `
+        <div>trust min <b>${p.trust_min}</b></div>
+        <div>per-txn cap <b>$${(p.per_tx_cap_drops/100000).toFixed(2)}</b></div>
+        <div>category <b id="policyCategory">${esc(dataTypeLabel)} — whitelisted</b></div>
+        <div>gray zone <b>${p.gray_zone_score_min}–${p.gray_zone_score_max}</b></div>
+      `;
+    } catch(e) { /* leave the static fallback text in place */ }
+  })();
+
+  document.getElementById('dataTypeSelect').addEventListener('change', (event) => {
+    const label = event.target.selectedOptions[0].textContent;
+    const category = document.getElementById('policyCategory');
+    if (category) category.textContent = `${label} — whitelisted`;
+  });
+
+  // ---------------------------------------------------------------------
+  // Tabs — Screen 1 / Screen 2 (Policy Config) / Screen 3 (Audit Ledger).
+  // Screen 2 and 3 are rendered client-side from the same JSON the server
+  // exposes at /policy.json and /audit — no full page navigation.
+  // ---------------------------------------------------------------------
+  function esc(v){ return v == null ? '' : String(v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+  async function loadMarketplaceSources(){
+    const el = document.getElementById('marketplaceSources');
+    try {
+      const candidates = await (await fetch(apiUrl('/marketplace/candidates'))).json();
+      el.innerHTML = candidates.map(c => `
+        <div class="source-card">
+          <div class="source-head">
+            <div class="source-name">${esc(c.name)}</div>
+            <div class="source-status">${esc(c.discovery_status)} · unpaid probe</div>
+          </div>
+          <div class="source-meta">${esc(c.category)} · ${esc(c.price_label)} · real rail ${esc(c.source_network)} · Testnet mirror xrpl:1</div>
+          <div class="field-k">sample input</div>
+          <pre class="sample-block">${esc(JSON.stringify(c.sample_input, null, 2))}</pre>
+          <div class="field-k" style="margin-top:8px;">advertised sample output</div>
+          <pre class="sample-block">${esc(JSON.stringify(c.sample_data, null, 2))}</pre>
+        </div>`).join('');
+    } catch(e) {
+      el.innerHTML = `<div class="note">failed to load marketplace declarations: ${esc(e)}</div>`;
+    }
+  }
+  loadMarketplaceSources();
+
+  const tabBtns = Array.from(document.querySelectorAll('.tab-btn'));
+  const tabPanels = {
+    screen1: document.getElementById('panel-screen1'),
+    screen2: document.getElementById('panel-screen2'),
+    screen3: document.getElementById('panel-screen3'),
+  };
+
+  function activateTab(name){
+    tabBtns.forEach(b => b.classList.toggle('active', b.dataset.tab === name));
+    Object.entries(tabPanels).forEach(([k, el]) => el.classList.toggle('active', k === name));
+    if (name === 'screen2') loadScreen2();
+    if (name === 'screen3') loadScreen3();
+  }
+  tabBtns.forEach(b => b.addEventListener('click', () => activateTab(b.dataset.tab)));
+
+  async function loadScreen2(){
+    const el = document.getElementById('screen2-content');
+    el.innerHTML = '<div class="note">loading…</div>';
+    try {
+      const p = await (await fetch(apiUrl('/policy.json'))).json();
+      const wl = p.category_whitelist.map(x => `<li>${esc(x)}</li>`).join('');
+      const bl = p.category_blacklist.map(x => `<li>${esc(x)}</li>`).join('');
+      el.innerHTML = `
+        <div class="brand-sub" style="margin-bottom:16px;">Screen 2 — currently effective Policy Matrix values (read-only in this demo; no save/edit action is wired up)</div>
+        <div class="grid2">
+          <div class="card"><h3>Per-transaction price cap <span class="editable-badge">lender-editable</span></h3>
+            <div class="field-k">max spend per single data purchase</div>
+            <div class="field-v" style="font-size:16px;">${p.per_tx_cap_drops.toLocaleString()} drops <span style="color:var(--text-faint);font-size:12px;">(≈ $${(p.per_tx_cap_drops/100000).toFixed(2)})</span></div>
+          </div>
+          <div class="card"><h3>Per-applicant cumulative cap <span class="editable-badge">lender-editable</span></h3>
+            <div class="field-k">max total spend per applicant across all purchases</div>
+            <div class="field-v" style="font-size:16px;">${p.per_applicant_cumulative_cap_drops.toLocaleString()} drops <span style="color:var(--text-faint);font-size:12px;">(≈ $${(p.per_applicant_cumulative_cap_drops/100000).toFixed(2)})</span></div>
+          </div>
+          <div class="card"><h3>Category whitelist <span class="editable-badge">lender-editable</span></h3>
+            <div class="field-k">selections agent may query within</div><ul>${wl}</ul>
+          </div>
+          <div class="card"><h3>Vendor trust threshold <span class="editable-badge">lender-editable</span></h3>
+            <div class="field-k">vendors scoring below this are excluded / flagged for human review, never auto-approved</div>
+            <div class="field-v" style="font-size:16px;">${p.trust_min} / 100</div>
+          </div>
+          <div class="card locked-card" style="grid-column:1/-1;">
+            <h3>🔒 Category blacklist <span class="locked-badge">LENDER-LOCKED — NOT EDITABLE</span></h3>
+            <ul>${bl}</ul>
+            <div class="locked-note">Per PRD Section 5: this is a hard, non-negotiable constraint. The Agent cannot override it "for business need," and per Section 8 it is not a judgment call the Agent makes at runtime — it ships hardcoded and stays that way in this UI.</div>
+          </div>
+        </div>
+        <div class="note">This screen intentionally has no save/submit control — Section 6 only requires it to show current values, not edit them, for this demo pass.</div>
+      `;
+    } catch(e) {
+      el.innerHTML = `<div class="note">failed to load policy: ${esc(e)}</div>`;
+    }
+  }
+
+  async function loadScreen3(){
+    const el = document.getElementById('screen3-content');
+    el.innerHTML = '<div class="note">loading…</div>';
+    try {
+      const rows = (await (await fetch(apiUrl('/audit'))).json()).slice().reverse();
+      const trs = rows.map(r => {
+        const sel = r.final_selection;
+        const selStr = sel ? `${esc(sel.name)} (${esc(sel.id)})` : '—';
+        const tx = r.xrpl_transaction_hash;
+        const txHtml = tx ? `<a class="hash" href="https://testnet.xrpl.org/transactions/${esc(tx)}" target="_blank" rel="noopener">${esc(tx)}</a>` : '—';
+        const considered = r.candidates_considered || [];
+        const considHtml = considered.map(c =>
+          `<div>${c.passed ? '✓' : '✗'} ${esc(c.name)} (${esc(c.id)}) — ${esc(c.price_drops)} drops, ${esc(c.category)}` +
+          (!c.passed ? ` — ${(c.rejection_reasons || []).join(', ')}` : '') + `</div>`
+        ).join('') || '—';
+        const status = r.delivery_status || '';
+        const statusCls = status.startsWith('delivered') ? 'status-delivered'
+          : status.startsWith('escalated') ? 'status-escalated'
+          : status.startsWith('failed') ? 'status-failed'
+          : status.startsWith('policy_test') ? 'status-test' : '';
+        return `<tr>
+          <td class="mono">${esc(r.timestamp)}</td>
+          <td class="mono">${esc(r.request_id)}</td>
+          <td>${esc(r.trigger_reason)}<br><span class="mono">applicant: ${esc(r.applicant_id)} · scenario: ${esc(r.scenario)}</span></td>
+          <td><details><summary>${considered.length} considered</summary>${considHtml}</details></td>
+          <td>${selStr}</td>
+          <td class="mono">${esc(r.price_drops)}</td>
+          <td class="mono">${txHtml}</td>
+          <td class="${statusCls}">${esc(status)}</td>
+        </tr>`;
+      }).join('') || `<tr><td colspan="8" class="empty">No audit records yet — trigger a run from Screen 1.</td></tr>`;
+
+      el.innerHTML = `
+        <div class="section-label">${rows.length} record(s)</div>
+        <div style="overflow-x:auto;">
+        <table class="audit">
+          <thead><tr><th>Timestamp (UTC)</th><th>Request ID</th><th>Trigger reason</th><th>Candidates considered</th><th>Final selection</th><th>Price (drops)</th><th>XRPL tx hash</th><th>Delivery status</th></tr></thead>
+          <tbody>${trs}</tbody>
+        </table>
+        </div>
+        <div class="note">PDF export is not implemented in this demo (CSV export above is real). Newest records first.</div>
+      `;
+    } catch(e) {
+      el.innerHTML = `<div class="note">failed to load audit ledger: ${esc(e)}</div>`;
+    }
+  }
+
+  document.getElementById('refreshAuditBtn').addEventListener('click', loadScreen3);
+})();
+</script>
+</body>
+</html>
