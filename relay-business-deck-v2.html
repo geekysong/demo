@@ -1,0 +1,810 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Relay procurement-broker agent business demo deck">
+  <title>Relay | Product Story v2</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600&family=IBM+Plex+Sans:wght@400;500;600&family=Newsreader:opsz,wght@6..72,500;6..72,600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --paper: #EEF0E9;
+      --paper-deep: #E3E7DD;
+      --ink: #182234;
+      --ink-soft: #5D6570;
+      --rule: rgba(24, 34, 52, 0.23);
+      --rule-strong: rgba(24, 34, 52, 0.48);
+      --green: #2F6F4E;
+      --green-wash: rgba(47, 111, 78, 0.09);
+      --rust: #9C5330;
+      --rust-wash: rgba(156, 83, 48, 0.09);
+      --serif: "Newsreader", Georgia, serif;
+      --sans: "IBM Plex Sans", Arial, sans-serif;
+      --mono: "IBM Plex Mono", "SFMono-Regular", Consolas, monospace;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      overflow: hidden;
+      background: var(--paper);
+      color: var(--ink);
+    }
+
+    body {
+      font-family: var(--sans);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    a { color: inherit; }
+
+    .deck {
+      position: relative;
+      width: 100%;
+      height: 100dvh;
+      isolation: isolate;
+      background:
+        linear-gradient(90deg, transparent 0 6.3%, rgba(156, 83, 48, 0.10) 6.3% calc(6.3% + 1px), transparent calc(6.3% + 1px)),
+        repeating-linear-gradient(0deg, transparent 0 39px, rgba(24, 34, 52, 0.035) 39px 40px),
+        var(--paper);
+    }
+
+    .slide {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      gap: clamp(18px, 2.3vh, 28px);
+      padding: clamp(44px, 6.4vh, 76px) clamp(56px, 7.2vw, 118px) clamp(72px, 9.2vh, 98px);
+      opacity: 0;
+      visibility: hidden;
+      transform: translateX(28px);
+      transition: opacity 320ms ease, transform 420ms cubic-bezier(.22,.76,.34,1), visibility 0s linear 420ms;
+      pointer-events: none;
+    }
+
+    .slide.active {
+      opacity: 1;
+      visibility: visible;
+      transform: translateX(0);
+      transition-delay: 0s;
+      pointer-events: auto;
+      z-index: 2;
+    }
+
+    .slide.from-left { transform: translateX(-28px); }
+
+    .slide-head {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      align-items: start;
+      gap: 32px;
+      padding-bottom: clamp(12px, 1.5vh, 18px);
+      border-bottom: 1px solid var(--rule-strong);
+    }
+
+    .eyebrow,
+    .folio,
+    .source,
+    .small-note,
+    .status,
+    .enforcement,
+    .metric,
+    .data,
+    .step-index {
+      font-family: var(--mono);
+      font-variant-numeric: tabular-nums lining-nums;
+    }
+
+    .eyebrow {
+      margin: 0 0 9px;
+      color: var(--ink-soft);
+      font-size: clamp(11px, 0.88vw, 14px);
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    h1, h2, h3, p { margin-top: 0; }
+
+    h1, h2 {
+      margin-bottom: 0;
+      font-family: var(--serif);
+      font-weight: 600;
+      letter-spacing: -0.035em;
+      line-height: 0.98;
+    }
+
+    h1 { font-size: clamp(48px, 6.1vw, 92px); }
+    h2 { max-width: 1120px; font-size: clamp(36px, 4.15vw, 64px); }
+
+    h3 {
+      margin-bottom: 8px;
+      font-size: clamp(16px, 1.35vw, 22px);
+      line-height: 1.2;
+    }
+
+    p {
+      margin-bottom: 0;
+      font-size: clamp(16px, 1.48vw, 23px);
+      line-height: 1.48;
+    }
+
+    .folio {
+      padding-top: 6px;
+      color: var(--ink-soft);
+      font-size: clamp(11px, 0.88vw, 14px);
+      white-space: nowrap;
+    }
+
+    .slide-body {
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+
+    .slide-foot {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 28px;
+      min-height: 22px;
+      color: var(--ink-soft);
+    }
+
+    .source {
+      max-width: 1050px;
+      font-size: clamp(9.5px, 0.72vw, 11.5px);
+      line-height: 1.42;
+    }
+
+    .source a {
+      text-decoration-color: rgba(24, 34, 52, 0.4);
+      text-underline-offset: 2px;
+    }
+
+    .brand-mark {
+      font-family: var(--sans);
+      font-size: clamp(12px, 0.9vw, 15px);
+      font-weight: 600;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+
+    .brand-mark::before {
+      content: "";
+      display: inline-block;
+      width: 18px;
+      height: 7px;
+      margin-right: 8px;
+      border-top: 2px solid var(--green);
+      border-bottom: 2px solid var(--green);
+      vertical-align: 1px;
+    }
+
+    .mono { font-family: var(--mono); font-variant-numeric: tabular-nums lining-nums; }
+    .green { color: var(--green); }
+    .rust { color: var(--rust); }
+
+    /* Slide 1 */
+    .scenario {
+      min-height: 0;
+      display: grid;
+      grid-template-columns: minmax(280px, 0.72fr) minmax(540px, 1.28fr);
+      gap: clamp(28px, 4vw, 62px);
+      align-items: stretch;
+    }
+
+    .scenario-copy {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      padding: 12px 0;
+    }
+
+    .scenario-copy p {
+      max-width: 430px;
+      color: var(--ink-soft);
+      font-size: clamp(16px, 1.35vw, 21px);
+    }
+
+    .decision-block {
+      margin-top: clamp(24px, 3.5vh, 38px);
+      border-top: 2px solid var(--ink);
+    }
+
+    .decision-block .choice {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      align-items: baseline;
+      gap: 18px;
+      padding: 11px 0;
+      border-bottom: 1px solid var(--rule);
+      color: var(--ink-soft);
+      font-size: clamp(13px, 1.02vw, 16px);
+    }
+
+    .decision-block .mark {
+      color: var(--ink);
+      font-family: var(--mono);
+      font-size: clamp(10px, 0.8vw, 13px);
+      font-weight: 600;
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
+    }
+
+    .scenario-visual {
+      position: relative;
+      min-height: clamp(335px, 54vh, 500px);
+      overflow: hidden;
+      border: 1px solid var(--rule-strong);
+      background: #F2F2EC;
+    }
+
+    .scenario-visual img {
+      width: 100%;
+      height: 100%;
+      display: block;
+      object-fit: cover;
+      object-position: 58% center;
+      filter: saturate(0.9) contrast(1.02);
+    }
+
+    .scenario-visual::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      box-shadow: inset 0 0 70px rgba(238, 240, 233, 0.32);
+      pointer-events: none;
+    }
+
+    .data-question {
+      position: absolute;
+      z-index: 2;
+      max-width: 220px;
+      padding: 9px 12px;
+      border-left: 3px solid var(--green);
+      background: rgba(238, 240, 233, 0.93);
+      box-shadow: 0 7px 20px rgba(24, 34, 52, 0.08);
+      color: var(--ink);
+      font-size: clamp(12px, 0.96vw, 15px);
+      line-height: 1.28;
+    }
+
+    .data-question strong {
+      display: block;
+      margin-bottom: 4px;
+      font-family: var(--sans);
+      font-size: clamp(12px, 0.98vw, 15px);
+      line-height: 1.25;
+    }
+
+    .data-question .detail {
+      display: block;
+      color: var(--ink-soft);
+      font-size: clamp(10px, 0.78vw, 12px);
+      line-height: 1.28;
+    }
+
+    .data-question.country { top: 11%; left: 5%; }
+    .data-question.industry { top: 32%; left: 5%; }
+
+    .question-mark {
+      position: absolute;
+      z-index: 2;
+      color: rgba(24, 34, 52, 0.48);
+      font-family: var(--serif);
+      font-size: clamp(50px, 5.2vw, 82px);
+      font-weight: 600;
+      line-height: 1;
+      text-shadow: 0 2px 0 rgba(238, 240, 233, 0.7);
+    }
+
+    .question-mark.one { top: 6%; right: 7%; transform: rotate(8deg); }
+    .question-mark.two { top: 53%; left: 7%; transform: rotate(-9deg); color: rgba(47, 111, 78, 0.55); }
+    .question-mark.three { bottom: 5%; right: 4%; transform: rotate(5deg); font-size: clamp(36px, 4vw, 62px); }
+
+    /* Slide 2 */
+    .price-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 0.83fr) minmax(0, 1.17fr);
+      gap: clamp(38px, 6vw, 92px);
+      align-items: stretch;
+    }
+
+    .evidence-ledger {
+      border-top: 2px solid var(--ink);
+      border-bottom: 1px solid var(--rule-strong);
+    }
+
+    .evidence-row {
+      display: grid;
+      grid-template-columns: minmax(180px, 1fr) auto;
+      gap: 24px;
+      align-items: baseline;
+      padding: clamp(13px, 1.7vh, 20px) 0;
+      border-top: 1px solid var(--rule);
+    }
+
+    .evidence-row:first-child { border-top: 0; }
+    .evidence-row .desc { color: var(--ink-soft); font-size: clamp(14px, 1.15vw, 18px); line-height: 1.38; }
+    .evidence-row .desc strong { color: var(--ink); font-family: var(--sans); }
+
+    .metric {
+      color: var(--green);
+      font-size: clamp(20px, 2vw, 31px);
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    .metric.compact { font-size: clamp(15px, 1.35vw, 21px); }
+
+    .analogue-label {
+      display: inline-block;
+      margin-bottom: 6px;
+      color: var(--ink-soft);
+      font-family: var(--sans);
+      font-size: clamp(10px, 0.8vw, 12px);
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    .qualification {
+      display: inline-block;
+      margin-top: 4px;
+      color: var(--ink-soft);
+      font-size: clamp(10px, 0.8vw, 12px);
+      font-weight: 600;
+      letter-spacing: 0.045em;
+      text-transform: uppercase;
+    }
+
+    .worked-math {
+      display: grid;
+      grid-template-rows: auto auto;
+      gap: 14px;
+      padding: clamp(20px, 2.4vw, 34px);
+      background: rgba(255,255,255,0.18);
+      border: 1px solid var(--rule-strong);
+    }
+
+    .worked-math h3 { font-family: var(--serif); font-size: clamp(22px, 2vw, 31px); font-weight: 600; }
+
+    .market-reasons {
+      display: grid;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .market-reason {
+      padding-top: 8px;
+      border-top: 1px solid var(--rule);
+      color: var(--ink-soft);
+      font-size: clamp(12px, 0.94vw, 15px);
+      line-height: 1.32;
+    }
+
+    .market-reason:first-child { padding-top: 0; border-top: 0; }
+    .market-reason strong { color: var(--ink); font-family: var(--sans); }
+
+    .math-caption {
+      margin: 0 0 5px;
+      color: var(--ink-soft);
+      font-size: clamp(10px, 0.78vw, 12px);
+      font-weight: 600;
+      line-height: 1.3;
+      text-transform: uppercase;
+    }
+
+    .equation {
+      margin-top: 6px;
+      color: var(--ink-soft);
+      font-size: clamp(13px, 1.08vw, 17px);
+      line-height: 1.5;
+    }
+
+    .bar-chart {
+      display: grid;
+      align-content: center;
+      gap: 12px;
+    }
+
+    .bar-row {
+      display: grid;
+      grid-template-columns: minmax(138px, 0.9fr) minmax(230px, 2fr) auto;
+      gap: 14px;
+      align-items: center;
+    }
+
+    .bar-label { color: var(--ink-soft); font-size: clamp(13px, 1vw, 16px); }
+    .bar-track { height: clamp(24px, 3.1vh, 34px); border-left: 1px solid var(--ink); background: rgba(24,34,52,0.05); }
+    .bar { height: 100%; background: var(--ink); }
+    .bar.sticker { width: 12%; }
+    .bar.effective { width: 100%; background: var(--green); }
+    .bar-value { min-width: 88px; text-align: right; font-family: var(--mono); font-size: clamp(14px, 1.18vw, 18px); font-weight: 600; }
+    .multiple { margin-top: 4px; text-align: right; color: var(--green); font-family: var(--serif); font-size: clamp(22px, 2.25vw, 34px); }
+
+    /* Slide 3 */
+    .cost-stack {
+      max-width: 1150px;
+      border-top: 2px solid var(--ink);
+    }
+
+    .cost-line {
+      display: grid;
+      grid-template-columns: minmax(245px, 0.66fr) minmax(0, 1.34fr);
+      gap: clamp(28px, 4vw, 64px);
+      padding: clamp(17px, 2.1vh, 25px) 0;
+      border-bottom: 1px solid var(--rule);
+    }
+
+    .cost-line h3 { font-family: var(--serif); font-size: clamp(22px, 1.9vw, 30px); }
+    .cost-line p { color: var(--ink-soft); font-size: clamp(15px, 1.3vw, 20px); }
+    .clarifier { margin-top: clamp(22px, 3vh, 34px); padding-left: 18px; border-left: 3px solid var(--green); color: var(--ink); font-size: clamp(14px, 1.18vw, 18px); }
+
+    /* Slide 4 */
+    .shopping-view {
+      display: grid;
+      grid-template-rows: auto auto;
+      gap: clamp(22px, 3.2vh, 36px);
+    }
+
+    .sample-label {
+      color: var(--rust);
+      font-size: clamp(11px, 0.85vw, 13px);
+      font-weight: 600;
+      letter-spacing: 0.045em;
+      text-transform: uppercase;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      table-layout: fixed;
+    }
+
+    th {
+      padding: 0 16px 10px;
+      border-bottom: 2px solid var(--ink);
+      color: var(--ink-soft);
+      font-size: clamp(11px, 0.87vw, 13px);
+      font-weight: 500;
+      letter-spacing: 0.05em;
+      text-align: left;
+      text-transform: uppercase;
+    }
+
+    td {
+      padding: clamp(12px, 1.7vh, 18px) 16px;
+      border-bottom: 1px solid var(--rule);
+      font-size: clamp(15px, 1.28vw, 20px);
+      vertical-align: middle;
+    }
+
+    td:first-child, th:first-child { padding-left: 0; }
+    td:last-child, th:last-child { padding-right: 0; text-align: right; }
+    td.data { font-size: clamp(14px, 1.15vw, 18px); }
+    tr.selected { background: var(--green-wash); }
+    tr.excluded { background: var(--rust-wash); }
+    .status { font-size: clamp(11px, 0.95vw, 14px); font-weight: 600; text-transform: uppercase; }
+    .status.selected { color: var(--green); }
+    .status.review { color: var(--ink); }
+    .status.excluded { color: var(--rust); }
+
+    .flowline {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      border-top: 1px solid var(--rule-strong);
+      border-bottom: 1px solid var(--rule-strong);
+    }
+
+    .flowstep {
+      position: relative;
+      padding: clamp(14px, 1.8vh, 20px) 20px clamp(14px, 1.8vh, 20px) 0;
+      font-size: clamp(14px, 1.18vw, 18px);
+    }
+
+    .flowstep:not(:last-child)::after {
+      content: "";
+      position: absolute;
+      top: 50%;
+      right: 18px;
+      width: 34px;
+      border-top: 1px solid var(--rule-strong);
+    }
+
+    .flowstep .step-index { display: block; margin-bottom: 3px; color: var(--ink-soft); font-size: clamp(10px, 0.78vw, 12px); }
+    .flowstep:last-child { color: var(--green); }
+
+    /* Slide 5 */
+    .policy-intro { display: flex; align-items: baseline; justify-content: space-between; gap: 28px; margin-bottom: 18px; }
+    .policy-intro p { max-width: 670px; color: var(--ink-soft); font-size: clamp(14px, 1.15vw, 18px); }
+    .policy-table th:nth-child(1) { width: 28%; }
+    .policy-table th:nth-child(2) { width: 47%; }
+    .policy-table th:nth-child(3) { width: 25%; }
+    .enforcement { display: inline-block; padding: 5px 8px; border: 1px solid var(--rule-strong); font-size: clamp(10px, 0.83vw, 13px); font-weight: 600; text-transform: uppercase; }
+    .enforcement.stop { color: var(--rust); border-color: var(--rust); background: var(--rust-wash); }
+
+    /* Slide 6 */
+    .model-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.1fr) minmax(260px, 0.9fr);
+      gap: clamp(48px, 7vw, 110px);
+      align-items: center;
+    }
+
+    .pricing-ledger { border-top: 2px solid var(--ink); }
+    .pricing-row { display: grid; grid-template-columns: 1.1fr 1fr; gap: 28px; padding: clamp(15px, 2vh, 23px) 0; border-bottom: 1px solid var(--rule); }
+    .pricing-row .name { font-family: var(--serif); font-size: clamp(20px, 1.7vw, 27px); }
+    .pricing-row .value { font-size: clamp(15px, 1.25vw, 19px); line-height: 1.45; }
+    .pricing-row .value.mono { font-size: clamp(14px, 1.18vw, 18px); }
+    .fx-pricing .pricing-row { padding: clamp(9px, 1.15vh, 13px) 0; }
+    .fx-pricing .pricing-row .value { font-size: clamp(14px, 1.08vw, 17px); line-height: 1.34; }
+
+    .trial-block { padding: clamp(26px, 3.2vw, 44px); border: 1px solid var(--green); background: var(--green-wash); }
+    .trial-block .metric { display: block; margin: 8px 0 16px; font-size: clamp(48px, 5vw, 78px); }
+    .trial-block p { color: var(--ink-soft); font-size: clamp(15px, 1.25vw, 19px); }
+    .revenue-block { padding: clamp(20px, 2.4vw, 32px); }
+    .revenue-block .metric { font-size: clamp(40px, 4.2vw, 64px); }
+    .fee-note { display: grid; gap: 7px; margin-top: 12px; padding-top: 11px; border-top: 1px solid rgba(47,111,78,0.35); color: var(--ink-soft); font-size: clamp(12px, 0.94vw, 14px); line-height: 1.35; }
+    .fee-note strong { color: var(--ink); }
+
+    /* Slide 7 */
+    .mapping-table th:nth-child(1) { width: 9%; }
+    .mapping-table th:nth-child(2) { width: 30%; }
+    .mapping-table th:nth-child(3) { width: 61%; }
+    .mapping-table td { padding-top: clamp(8px, 1.05vh, 12px); padding-bottom: clamp(8px, 1.05vh, 12px); font-size: clamp(12.5px, 1.02vw, 16px); line-height: 1.32; }
+    .mapping-table td:first-child { color: var(--green); font-family: var(--mono); font-weight: 600; }
+    .mapping-table td:nth-child(2) { font-weight: 600; }
+    .closing-line { margin-top: clamp(18px, 2.2vh, 26px); text-align: right; font-family: var(--serif); font-size: clamp(20px, 1.9vw, 30px); }
+
+    .quote-table th:first-child { width: 40%; }
+    .quote-table .small-note { font-size: 14px; color: var(--ink-soft); }
+    .swimlane { width: 100%; max-height: 42vh; overflow: visible; font-family: var(--sans); font-size: 16px; }
+    .swimlane .lane-name { font-weight: 600; font-size: 18px; }
+    .integration { margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--rule-strong); }
+    .integration-head { display: flex; gap: 20px; align-items: baseline; margin-bottom: 10px; }
+    .integration-head span { font-size: 12px; color: var(--ink-soft); }
+    .integration code { display: block; padding: 12px; background: var(--green-wash); font-family: var(--mono); font-size: clamp(10px, 1vw, 14px); overflow-wrap: anywhere; }
+    .integration p { margin-top: 10px; font-size: 14px; color: var(--ink-soft); }
+    /* Navigation */
+    .progress-track {
+      position: fixed;
+      z-index: 20;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 4px;
+      background: rgba(24, 34, 52, 0.10);
+    }
+
+    .progress-bar {
+      width: 14.2857%;
+      height: 100%;
+      background: var(--green);
+      transition: width 320ms ease;
+    }
+
+    .nav {
+      position: fixed;
+      z-index: 20;
+      left: 50%;
+      bottom: clamp(18px, 2.6vh, 28px);
+      display: flex;
+      align-items: center;
+      gap: 18px;
+      transform: translateX(-50%);
+    }
+
+    .nav-button {
+      width: 38px;
+      height: 38px;
+      display: grid;
+      place-items: center;
+      border: 1px solid var(--rule-strong);
+      border-radius: 50%;
+      background: rgba(238, 240, 233, 0.88);
+      color: var(--ink);
+      cursor: pointer;
+      font: 500 20px/1 var(--sans);
+      transition: color 160ms ease, border-color 160ms ease, background 160ms ease;
+    }
+
+    .nav-button:hover, .nav-button:focus-visible { border-color: var(--green); color: var(--green); outline: none; }
+    .nav-button:disabled { opacity: 0.28; cursor: default; }
+
+    .dots { display: flex; gap: 8px; }
+    .dot { width: 9px; height: 9px; padding: 0; border: 1px solid var(--ink-soft); border-radius: 50%; background: transparent; cursor: pointer; }
+    .dot.active { border-color: var(--green); background: var(--green); }
+    .dot:focus-visible { outline: 2px solid var(--green); outline-offset: 3px; }
+
+    @media (max-width: 860px), (max-height: 670px) {
+      .slide { padding-left: 7vw; padding-right: 6vw; }
+      .scenario { grid-template-columns: 0.7fr 1.3fr; gap: 24px; }
+      .scenario-copy { padding: 0; }
+      .decision-block .choice { padding: 8px 0; }
+      .scenario-visual { min-height: 320px; }
+      .price-grid, .model-grid { grid-template-columns: 1fr; gap: 24px; }
+      .worked-math { padding: 18px 22px; }
+      .cost-line { grid-template-columns: 0.7fr 1.3fr; }
+      .source { max-width: 80vw; }
+      .trial-block { display: none; }
+    }
+
+    @media (max-width: 640px) {
+      h1 { font-size: clamp(42px, 13vw, 66px); }
+      h2 { font-size: clamp(32px, 9vw, 48px); }
+      .slide { padding-top: 48px; padding-bottom: 74px; }
+      .slide-head { gap: 12px; }
+      .price-grid { display: block; }
+      .worked-math { margin-top: 20px; }
+      .evidence-row { grid-template-columns: 1fr; gap: 4px; }
+      .metric { justify-self: start; }
+      .bar-row { grid-template-columns: 105px 1fr auto; }
+      .cost-line { grid-template-columns: 1fr; gap: 4px; }
+      .flowline { grid-template-columns: repeat(5, minmax(90px, 1fr)); overflow-x: auto; }
+      .flowstep:not(:last-child)::after { display: none; }
+      th, td { padding-left: 8px; padding-right: 8px; }
+      .source { font-size: 9px; }
+      .brand-mark { display: none; }
+      .scenario { grid-template-columns: 1fr; overflow-y: auto; }
+      .scenario-copy { justify-content: flex-start; }
+      .decision-block { display: none; }
+      .scenario-visual { min-height: 300px; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        scroll-behavior: auto !important;
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+      }
+      .slide, .slide.from-left { transform: none; }
+    }
+
+/* Version 2: product and customer story */
+.slide,.slide.active,.slide.from-left {transition:none;transform:none}
+.story-table td {font-size:inherit;line-height:1.5}
+.story {display:flex;flex-direction:column;justify-content:center;gap:28px;height:100%;min-height:0}
+.story p {margin:0;font-size:clamp(20px,2.1vw,30px);line-height:1.4;max-width:1050px}
+.story .lead {font-family:var(--serif);font-size:clamp(34px,4vw,58px);line-height:1.13;max-width:1000px}
+.story strong {color:var(--green)}
+.story .muted {font-size:clamp(17px,1.5vw,22px);color:var(--ink-soft)}
+.story-split {display:grid;grid-template-columns:1.15fr 1fr;gap:60px;align-items:center;height:100%}
+.story-split img {width:100%;max-height:440px;object-fit:cover;border:1px solid var(--rule)}
+.story-list {display:flex;flex-direction:column;gap:0}
+.story-list div {display:grid;grid-template-columns:180px 1fr;gap:25px;padding:22px 0;border-bottom:1px solid var(--rule);font-size:clamp(19px,1.9vw,27px);line-height:1.35}
+.story-list b {font-size:16px;text-transform:uppercase;letter-spacing:.08em;color:var(--green);padding-top:6px}
+.story-table {width:100%;border-collapse:collapse;font-size:clamp(18px,1.8vw,25px)}
+.story-table td,.story-table th {padding:20px 15px;vertical-align:top;text-align:left;border-bottom:1px solid var(--rule)}
+.story-table th {font-size:16px;text-transform:uppercase;color:var(--ink-soft)}
+.statement {border-left:4px solid var(--green);padding-left:28px}
+.price-line {font-family:var(--serif);font-size:clamp(50px,6vw,88px);color:var(--green)}
+.story .small {font-size:18px;color:var(--ink-soft)}
+.slide-body {min-height:0}
+.source {max-width:1100px}
+@media(max-width:800px){.story-split{grid-template-columns:1fr;gap:20px}.story-split img{max-height:200px}.story{gap:18px}.story-list div{grid-template-columns:110px 1fr;gap:12px;padding:14px 0}.slide-body{overflow:auto}.story-table td,.story-table th{padding:12px 8px}.story p{font-size:20px}}
+@media print{html,body{height:auto;overflow:visible}.deck{height:auto}.slide,.slide.active{position:relative;visibility:visible;opacity:1;transform:none;height:100vh;break-after:page;pointer-events:auto}.nav,.progress-track{display:none}}
+
+</style>
+</head>
+<body>
+  <main class="deck" aria-label="Relay business demo deck">
+    <section class="slide active" aria-labelledby="story-1"><header class="slide-head"><div><p class="eyebrow">Relay / Product</p><h1 id="story-1">On-demand data procurement for lenders</h1></div><div class="folio">01 / 10</div></header><div class="slide-body"><div class="story"><p class="lead">A lender asks for missing data.<br><strong>Relay handles the purchase.</strong></p><p>Relay finds a source, applies the lender’s procurement rules, and returns data with a purchase receipt.</p><p class="muted">One Relay integration. The lending decision stays with the lender.</p></div></div><footer class="slide-foot"><div class="source">Product scope: supplemental data procurement. Relay does not score applicants or approve loans.</div><div class="brand-mark">Relay · v2</div></footer></section>
+
+<section class="slide" aria-labelledby="story-2"><header class="slide-head"><div><p class="eyebrow">Customer / Information gap</p><h1 id="story-2">An application needs one more piece of evidence</h1></div><div class="folio">02 / 10</div></header><div class="slide-body"><div class="story-split"><div class="story"><p>A loan officer reviewing a business application needs to check the company’s legal registration status.</p><p class="statement">The immediate task:<br><strong>Find the relevant record and bring it into the review.</strong></p><p class="muted">The lender decides whether the record is sufficient for its review.</p></div><img src="assets/relay-loan-officer-v1.png" alt="Illustration of a loan officer reviewing an incomplete file"></div></div><footer class="slide-foot"><div class="source">Illustrative use case aligned with the LEI resource in the demo. The current demo returns an advertised sample, not a lookup for a real applicant.</div><div class="brand-mark">Relay · v2</div></footer></section>
+
+<section class="slide" aria-labelledby="story-3"><header class="slide-head"><div><p class="eyebrow">Customer / Procurement work</p><h1 id="story-3">The lender still has to acquire the data</h1></div><div class="folio">03 / 10</div></header><div class="slide-body"><div class="story"><div class="story-list"><div><b>Find a source</b><span>Identify a provider for an infrequent data need.</span></div><div><b>Check access</b><span>Review coverage, usage terms, price and procurement rules.</span></div><div><b>Connect &amp; pay</b><span>Handle access, payment and the returned data format.</span></div><div><b>Keep evidence</b><span>Record what was bought, from whom, and for how much.</span></div></div><p class="muted">Relay’s value proposition: handle this procurement work through one service.</p></div></div><footer class="slide-foot"><div class="source">Customer-value hypothesis to validate with lenders; no measured time or cost reduction is claimed.</div><div class="brand-mark">Relay · v2</div></footer></section>
+
+<section class="slide" aria-labelledby="story-4"><header class="slide-head"><div><p class="eyebrow">Product / Service boundary</p><h1 id="story-4">One request, a data result and a receipt</h1></div><div class="folio">04 / 10</div></header><div class="slide-body"><div class="story"><div class="story-list"><div><b>Lender sends</b><span>Data category, applicant reference, region and freshness requirement.</span></div><div><b>Relay handles</b><span>Source discovery, policy checks, the quote and supplier payment.</span></div><div><b>Lender receives</b><span>Data for the review, its source and a traceable purchase record.</span></div></div><p class="statement"><strong>No qualifying source:</strong> stop the purchase and flag the outcome for review.</p></div></div><footer class="slide-foot"><div class="source">Current demo records escalation in status/audit only. Region is logged, not filtered; policy editing and a human-review queue remain planned.</div><div class="brand-mark">Relay · v2</div></footer></section>
+
+<section class="slide" aria-labelledby="story-5"><header class="slide-head"><div><p class="eyebrow">Demo / Concrete output</p><h1 id="story-5">A registration record with purchase evidence</h1></div><div class="folio">05 / 10</div></header><div class="slide-body"><div class="story"><table class="story-table"><thead><tr><th>Returned data</th><th>Purchase evidence</th></tr></thead><tbody><tr><td>Legal name: Apple Inc.<br>Entity status: ACTIVE<br>Registration status: ISSUED<br>Jurisdiction: US-CA</td><td>Resource: CompliancePulse LEI<br>Mirror price: 0.02 XRP<br>Network: XRPL Testnet<br>Result: independently confirmed</td></tr></tbody></table><p>The record provides registration context. <strong>The receipt makes the purchase traceable.</strong></p><p class="muted"><a href="http://127.0.0.1:8000/" target="_blank" rel="noopener">Open the live procurement dashboard ↗</a></p></div></div><footer class="slide-foot"><div class="source">Advertised example stored by the local Testnet mirror; not a fresh Apple query or applicant verification. Source: marketplace.py and the confirmed local demo run.</div><div class="brand-mark">Relay · v2</div></footer></section>
+
+<section class="slide" aria-labelledby="story-6"><header class="slide-head"><div><p class="eyebrow">Customer / Reason to pay</p><h1 id="story-6">Lenders pay Relay to handle procurement</h1></div><div class="folio">06 / 10</div></header><div class="slide-body"><div class="story"><p class="lead">The paying customer is the <strong>lending institution.</strong></p><p>The user is a loan officer or an underwriting system requesting supplemental information.</p><div class="statement"><p>Relay aims to reduce separate supplier integrations and the work of sourcing, paying for and documenting occasional purchases.</p></div><p class="muted">Initial target hypothesis: lenders with recurring, low-volume needs across several data categories.</p></div></div><footer class="slide-foot"><div class="source">Customer segment and willingness to pay are hypotheses. A pilot should measure procurement effort, usable-result rate and repeat usage.</div><div class="brand-mark">Relay · v2</div></footer></section>
+
+<section class="slide" aria-labelledby="story-7"><header class="slide-head"><div><p class="eyebrow">Business model / Proposed</p><h1 id="story-7">Revenue from each completed data purchase</h1></div><div class="folio">07 / 10</div></header><div class="slide-body"><div class="story"><div class="price-line">US$0.50 <span style="font-size:.4em;color:var(--ink-soft)">per query</span></div><p>Proposed customer price includes data procurement.<br>Relay pays the supplier and retains the service spread.</p><div class="story-list"><div><b>Trial proposal</b><span>US$10 credit for 20 queries.</span></div><div><b>Economics</b><span>Customer revenue less supplier, payment and operating costs.</span></div></div><p class="muted">Price and margin require validation with real customer demand and supplier terms.</p></div></div><footer class="slide-foot"><div class="source">Commercial proposal, not live billing. Current code models vendor cost + 17.5% and a nominal US$50 trial ledger; no actual lender collection is implemented.</div><div class="brand-mark">Relay · v2</div></footer></section>
+
+<section class="slide" aria-labelledby="story-8"><header class="slide-head"><div><p class="eyebrow">Implementation / Payment mechanism</p><h1 id="story-8">x402 connects a quote to data access</h1></div><div class="folio">08 / 10</div></header><div class="slide-body"><div class="story"><div class="story-list"><div><b>Quote</b><span>The resource responds with HTTP 402 and payment requirements.</span></div><div><b>Pay</b><span>Relay signs a payment and retries; the resource invokes the facilitator to verify and settle.</span></div><div><b>Deliver</b><span>The resource returns data and a receipt. Relay independently checks the transaction.</span></div></div><p class="muted">The lender uses Relay’s API; Relay handles the supplier payment workflow.</p></div></div><footer class="slide-foot"><div class="source">Current implementation: XRP Testnet payment to a local mirror. USD pricing and USDT settlement are proposed; automatic currency conversion is not implemented.</div><div class="brand-mark">Relay · v2</div></footer></section>
+
+<section class="slide" aria-labelledby="story-9"><header class="slide-head"><div><p class="eyebrow">Evidence / Current scope</p><h1 id="story-9">What the working demo proves</h1></div><div class="folio">09 / 10</div></header><div class="slide-body"><div class="story"><table class="story-table"><thead><tr><th>Working today</th><th>Next product work</th></tr></thead><tbody><tr><td>Live 402 declarations from two configured resources<br>Server-side procurement checks<br>Real XRP Testnet settlement<br>Sample delivery and an audit ledger</td><td>Dynamic marketplace search<br>Actual request-specific vendor data<br>Editable policies and review workflow<br>Customer billing and production controls</td></tr></tbody></table><p class="muted">A confirmed payment demonstrates the purchase mechanism. Customer value and production economics still need a pilot.</p></div></div><footer class="slide-foot"><div class="source">Evidence: orchestrator.py, marketplace.py and PRD v2.1. Vendor metadata and local Testnet mirrors are distinct; no mainnet vendor was paid.</div><div class="brand-mark">Relay · v2</div></footer></section>
+
+<section class="slide" aria-labelledby="story-10"><header class="slide-head"><div><p class="eyebrow">Next step / Pilot</p><h1 id="story-10">A pilot around one recurring data need</h1></div><div class="folio">10 / 10</div></header><div class="slide-body"><div class="story"><p class="lead">One lender.<br>One recurring data category.<br><strong>A measurable procurement outcome.</strong></p><p>Compare the effort to obtain a usable result, the complete cost per purchase, and whether the lender chooses to use Relay again.</p><p class="muted"><a href="http://127.0.0.1:8000/" target="_blank" rel="noopener">Live demo ↗</a> &nbsp;·&nbsp; <a href="https://github.com/geekysong/demo" target="_blank" rel="noopener">Project repository ↗</a></p></div></div><footer class="slide-foot"><div class="source">Proposed pilot; no customer commitment or measured outcome is claimed.</div><div class="brand-mark">Relay · v2</div></footer></section>
+
+    <div class="progress-track" aria-hidden="true"><div class="progress-bar" id="progressBar"></div></div>
+    <nav class="nav" aria-label="Slide navigation">
+      <button class="nav-button" id="prevBtn" type="button" aria-label="Previous slide">‹</button>
+      <div class="dots" id="dots" aria-label="Choose slide"></div>
+      <button class="nav-button" id="nextBtn" type="button" aria-label="Next slide">›</button>
+    </nav>
+  </main>
+
+  <script>
+    (() => {
+      const slides = [...document.querySelectorAll('.slide')];
+      const dots = document.getElementById('dots');
+      const prev = document.getElementById('prevBtn');
+      const next = document.getElementById('nextBtn');
+      const progress = document.getElementById('progressBar');
+      let index = 0;
+      let touchStartX = null;
+
+      slides.forEach((slide, slideIndex) => {
+        slide.setAttribute('aria-hidden', slideIndex === 0 ? 'false' : 'true');
+        const dot = document.createElement('button');
+        dot.type = 'button';
+        dot.className = `dot${slideIndex === 0 ? ' active' : ''}`;
+        dot.setAttribute('aria-label', `Go to slide ${slideIndex + 1}`);
+        dot.setAttribute('aria-current', slideIndex === 0 ? 'true' : 'false');
+        dot.addEventListener('click', () => show(slideIndex));
+        dots.appendChild(dot);
+      });
+
+      function show(nextIndex) {
+        const bounded = Math.max(0, Math.min(slides.length - 1, nextIndex));
+        if (bounded === index) return;
+        const movingBack = bounded < index;
+        slides[index].classList.remove('active');
+        slides[index].classList.toggle('from-left', !movingBack);
+        slides[index].setAttribute('aria-hidden', 'true');
+        index = bounded;
+        slides[index].classList.toggle('from-left', movingBack);
+        requestAnimationFrame(() => slides[index].classList.add('active'));
+        slides[index].setAttribute('aria-hidden', 'false');
+        updateControls();
+      }
+
+      function updateControls() {
+        [...dots.children].forEach((dot, dotIndex) => {
+          const active = dotIndex === index;
+          dot.classList.toggle('active', active);
+          dot.setAttribute('aria-current', active ? 'true' : 'false');
+        });
+        prev.disabled = index === 0;
+        next.disabled = index === slides.length - 1;
+        progress.style.width = `${((index + 1) / slides.length) * 100}%`;
+        document.title = `Relay v2 | ${String(index + 1).padStart(2, '0')} of ${String(slides.length).padStart(2, '0')}`;
+      }
+
+      prev.addEventListener('click', () => show(index - 1));
+      next.addEventListener('click', () => show(index + 1));
+
+      document.addEventListener('keydown', (event) => {
+        if (event.key === 'ArrowRight' || event.key === 'PageDown' || event.key === ' ') {
+          event.preventDefault();
+          show(index + 1);
+        } else if (event.key === 'ArrowLeft' || event.key === 'PageUp') {
+          event.preventDefault();
+          show(index - 1);
+        } else if (event.key === 'Home') {
+          event.preventDefault();
+          show(0);
+        } else if (event.key === 'End') {
+          event.preventDefault();
+          show(slides.length - 1);
+        }
+      });
+
+      document.addEventListener('touchstart', (event) => {
+        touchStartX = event.changedTouches[0].clientX;
+      }, { passive: true });
+
+      document.addEventListener('touchend', (event) => {
+        if (touchStartX === null) return;
+        const distance = event.changedTouches[0].clientX - touchStartX;
+        if (Math.abs(distance) > 48) show(index + (distance < 0 ? 1 : -1));
+        touchStartX = null;
+      }, { passive: true });
+
+      updateControls();
+    })();
+  </script>
+</body>
+</html>
