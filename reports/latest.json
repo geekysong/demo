@@ -1,0 +1,120 @@
+{
+  "mode": "OFFLINE_SIMULATION",
+  "run_id": "0fdaae3a39c6",
+  "real": [
+    "independent XRPL keys",
+    "XRPL Payment signatures and verification",
+    "x402 SDK invoice binding",
+    "in-process HTTP 402/retry",
+    "SQLite persistence"
+  ],
+  "simulated": [
+    "ledger consensus",
+    "fund balances and reserves",
+    "facilitator settlement",
+    "vendor data"
+  ],
+  "public_testnet_used": false,
+  "master_address": "raUBd8ECdARfZR8kja4oeSDEdMhRfeFuSk",
+  "children": [
+    {
+      "id": "agent-a",
+      "parent": "master",
+      "tenant": "tenant-a",
+      "role": "child",
+      "address": "r9ZNcjZTV6nZNLAuM4DfLEDge9KgJR51Vu",
+      "budget": 60000
+    },
+    {
+      "id": "agent-b",
+      "parent": "master",
+      "tenant": "tenant-a",
+      "role": "child",
+      "address": "rG6wi5ixnEpZcbPKUxqQBLKnN2gPXYhuda",
+      "budget": 20000
+    }
+  ],
+  "steps": [
+    {
+      "id": "fund-agent-a",
+      "kind": "funding",
+      "wallet": "master",
+      "destination": "r9ZNcjZTV6nZNLAuM4DfLEDge9KgJR51Vu",
+      "amount": 1100000,
+      "status": "funded",
+      "hash": "E19D36E2EBE42095FC20DAB19EB8F194C7CCE1BAF3D98AAB8804E4AB28479459",
+      "error": null
+    },
+    {
+      "id": "buy-agent-a",
+      "kind": "purchase",
+      "wallet": "agent-a",
+      "destination": "rGaNFfQT6WcP1ZHSNJqjuU1SHLsu4AidMy",
+      "amount": 20000,
+      "status": "delivered",
+      "hash": "0F0CA3DBBD7A13162B06201352720476C5C79316D14EF88F7CB41532C2F6BF58",
+      "error": null
+    },
+    {
+      "id": "fund-agent-b",
+      "kind": "funding",
+      "wallet": "master",
+      "destination": "rG6wi5ixnEpZcbPKUxqQBLKnN2gPXYhuda",
+      "amount": 1100000,
+      "status": "funded",
+      "hash": "8A575A333A8BB0280866505B5BAD66C8865759C19C459F262C1F0D561A905637",
+      "error": null
+    },
+    {
+      "id": "buy-agent-b",
+      "kind": "purchase",
+      "wallet": "agent-b",
+      "destination": "rGaNFfQT6WcP1ZHSNJqjuU1SHLsu4AidMy",
+      "amount": 20000,
+      "status": "delivered",
+      "hash": "CBCA2D798B48957FF71B44A6B4309245B4544C4DFBE7B0CC3F3F9D9A8C37693B",
+      "error": null
+    },
+    {
+      "id": "over-budget",
+      "status": "rejected_before_signing",
+      "reason": "Purchase budget exceeded"
+    },
+    {
+      "id": "recoverable",
+      "kind": "purchase",
+      "wallet": "agent-a",
+      "destination": "rGaNFfQT6WcP1ZHSNJqjuU1SHLsu4AidMy",
+      "amount": 20000,
+      "status": "delivery_failed",
+      "hash": "E8FD3E0DE0290BA7515D053244A05FEACF63C034CC80237ADBC2684226FD4E5B",
+      "error": "Merchant HTTP 503; reconciliation required"
+    },
+    {
+      "id": "recoverable",
+      "kind": "purchase",
+      "wallet": "agent-a",
+      "destination": "rGaNFfQT6WcP1ZHSNJqjuU1SHLsu4AidMy",
+      "amount": 20000,
+      "status": "delivered",
+      "hash": "E8FD3E0DE0290BA7515D053244A05FEACF63C034CC80237ADBC2684226FD4E5B",
+      "error": null
+    }
+  ],
+  "balances_drops": {
+    "master": 17799976,
+    "agent-a": 1059976,
+    "agent-b": 1079988,
+    "merchant": 1060000
+  },
+  "recovery_charged_again": false,
+  "simulated_fees_burned_drops": 60,
+  "sample_delivery": {
+    "sample": true,
+    "data_type": "business_registration_status",
+    "result": {
+      "legal_name": "Wallet Lab Example Ltd",
+      "entity_status": "ACTIVE"
+    }
+  }
+}
