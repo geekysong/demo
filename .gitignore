@@ -19,3 +19,5 @@ htmlcov/
 
 
 .checkout.sqlite3*
+
+.wallet-visualization/

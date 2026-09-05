@@ -5,7 +5,10 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 from xrpl.core.binarycodec import decode, encode
-from lab import FEE, PRICE, RESERVE, make_lab
+if __package__:
+    from .lab import FEE, PRICE, RESERVE, make_lab
+else:
+    from lab import FEE, PRICE, RESERVE, make_lab
 
 
 class WalletFlowTests(unittest.TestCase):

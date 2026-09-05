@@ -2,7 +2,10 @@
 import json
 import uuid
 from pathlib import Path
-from lab import FEE, PRICE, RESERVE, make_lab
+if __package__:
+    from .lab import FEE, PRICE, RESERVE, make_lab
+else:
+    from lab import FEE, PRICE, RESERVE, make_lab
 
 ROOT = Path(__file__).resolve().parent
 

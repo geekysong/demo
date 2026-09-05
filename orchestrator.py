@@ -71,6 +71,7 @@ from x402_xrpl.types import PaymentRequirements
 
 import billing
 import customer_checkout
+import wallet_visualization
 import marketplace
 import policy_filter
 from relay_payment import add_relay_comment
@@ -87,6 +88,7 @@ SELF_URL_BASE = os.getenv("RELAY_SELF_URL", "http://localhost:8000")
 
 app = FastAPI()
 app.include_router(customer_checkout.router)
+app.include_router(wallet_visualization.router)
 RUN_START_LOCK = threading.Lock()
 RUN_ACTIVE = False
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])

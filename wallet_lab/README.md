@@ -1,3 +1,5 @@
+> 已通过 Git subtree 从独立原型 `9211402` 合入 demo。界面入口为 `/wallets`；集成说明见上一级 `WALLET_VISUALIZATION.md`。下文保留原型的实现说明，涉及“尚未 merge”的段落描述的是原始 checkpoint。
+
 # Wallet Lab：独立主钱包 / 子钱包购买原型
 
 本地闭环已实现：创建两个独立子钱包 → 主钱包分别注资 → 子钱包通过 x402 购买样例数据 → 独立核对模拟账本 → 持久化结果。包括超预算拒绝、付款后响应丢失和重启恢复。
@@ -9,8 +11,8 @@
 在任意目录可使用工作区已有解释器运行（只借用已安装依赖，不导入 demo 业务代码）：
 
 ```sh
-/Users/alberto/Documents/hackathon/demo/.venv/bin/python /Users/alberto/Documents/hackathon/wallet-lab/run.py
-/Users/alberto/Documents/hackathon/demo/.venv/bin/python -m unittest discover -s /Users/alberto/Documents/hackathon/wallet-lab -v
+/Users/alberto/Documents/hackathon/demo/.venv/bin/python /Users/alberto/Documents/hackathon/demo/wallet_lab/run.py
+/Users/alberto/Documents/hackathon/demo/.venv/bin/python -m unittest discover -s /Users/alberto/Documents/hackathon/demo/wallet_lab -v
 ```
 
 也可在此目录创建自己的环境：

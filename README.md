@@ -154,3 +154,7 @@ See [PRD v2.1](relay-prd-v2-gap-execution-plan.md) (Chinese) for the full gap re
 | `relay-screen1-live.html` | Dashboard with three tabs |
 | `setup_testnet.py` / `start.sh` | Wallet configuration and local startup |
 | `requirements.txt` | Dependency versions from the verified environment |
+
+## Wallet visualization
+
+Open **Wallets** from the dashboard or visit `/wallets` to explore a master wallet funding two independent purchasing wallets. Create wallets, allocate funds, purchase sample data, and recover a lost delivery without paying again. This page uses real signatures with **offline simulated settlement**, separate from the Testnet checkout flow. See [WALLET_VISUALIZATION.md](WALLET_VISUALIZATION.md).
