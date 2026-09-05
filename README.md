@@ -1,43 +1,28 @@
 # Relay
 
-**An on-demand data procurement agent for lenders.**
+**A procurement proxy for applications and agents that need to retrieve or buy data.**
 
-A lender requests missing data. Relay selects a resource under the lender's procurement rules, reads the quote, handles payment, and returns data with a traceable purchase receipt. One Relay integration provides access to multiple data sources; lending decisions remain with the lender.
+Relay brings source selection, spending controls, payment and delivery evidence into one workflow. Its first implemented scenario is a lender requesting additional business-registration or industry-income context. The institution retains responsibility for lending decisions.
 
-This repository is a hackathon demo using **real XRP Testnet settlement, local vendor mirrors, and sample data delivery**. It is not a production lending system.
+**Current status: local hackathon prototype.** The main procurement flow uses real **XRPL Testnet** payments and sample data. The wallet workspace uses real signatures with **offline simulated settlement**. Procurement decisions are deterministic policy rules; no LLM interprets customer goals or selects suppliers.
 
-See [submission guide, architecture and checklist](SUBMISSION.md) for the integrated Ripple challenge materials and current acceptance behavior.
+## What you can run
 
-## Customer payment
-
-The demo now supports a GemWallet / manual **XRPL Testnet** checkout and a separate **mock fiat card checkout**. Pay first, then run procurement. See [checkout flow and API changes](CHECKOUT_DEMO.md); default `/run` now requires a paid `checkout_id`.
-
-## What the demo shows
-
-The dashboard has three tabs:
-
-| Screen | Contents |
-| --- | --- |
-| Live Shopping | Request details, vendor declarations, filtering, HTTP 402 quotes, payment status, delivered data, and on-chain receipts |
-| Policy Config | Read-only display of effective budget and category rules |
-| Audit Ledger | Purchase records, candidates and rejection reasons, transaction links, and CSV export |
-
-Two data products are available:
-
-| Product | Data category | Demo output |
+| Component | Entry | Current behavior |
 | --- | --- | --- |
-| CompliancePulse · Global LEI lookup | Business registration status | Sample legal name, entity status, registration status, and related fields |
-| MacroPulse · BLS wage benchmarks | Industry income benchmarks | Historical BLS wage sample for US legal services (May 2023) |
+| Procurement terminal | [Live Shopping](http://127.0.0.1:8000/) | Customer checkout → source selection → x402 payment → sample receipt and acceptance checks |
+| Policy Config | Dashboard tab or `/policy-config` | Read-only category, trust, freshness and spending rules |
+| Audit Ledger | Dashboard tab or `/audit-ledger` | Candidate decisions, payment records and delivery status; dashboard adds acceptance details; JSON and CSV exports |
+| Wallet workspace | [Wallets](http://127.0.0.1:8000/wallets) | Create independent child wallets with budgets, allocate simulated funds, buy samples and recover a lost response using the same transaction |
+| Product presentation | [v4 deck](relay-business-deck-v4.html) | Product proposition and proposed commercial model; includes capabilities beyond the implemented prototype |
 
-A successful run follows this flow:
+Localhost links require the backend on your own machine. This repository does not provide a public hosted application.
 
-> Structured request → Source discovery → Policy filtering → HTTP 402 quote → Signed payment → Testnet settlement → Independent on-chain confirmation → Data and audit receipt
-
-Relay checks the final quote before signing and independently verifies the payer, recipient and exact delivered amount on-chain. Payment and data acceptance are separate: `delivered` requires confirmed payment and accepted data. Current samples end at `delivery_needs_review`: LEI provenance/freshness remains unknown, and historical wages fail freshness. See [submission guide](SUBMISSION.md).
+**Local work in progress:** the development workspace also contains a `credit-card-market/` Mock and a `USER-001` dashboard entry. They demonstrate consent, questions over synthetic spending data, simulated payments, contributor earnings and refunds. They remain uncommitted at this README update and are **not included in a fresh clone**. They do not connect to the main Testnet checkout, wallet engine or audit ledger. The concise v4 deck and page-flow demo are also local, uncommitted artifacts.
 
 ## Quick start
 
-These commands target macOS / Linux and require **Python 3.11+** (verified locally with 3.12), Git, and internet access. Access to a private GitHub repository requires permission; a signed-out browser may show a 404 page.
+Requires Git, Python **3.11+** (locally verified with 3.12), and internet access for installation and Testnet operations.
 
 ```sh
 git clone git@github.com:geekysong/demo.git
@@ -48,115 +33,142 @@ python3.12 -m venv .venv
 sh start.sh
 ```
 
-If you already downloaded the repository, enter its directory and start with the virtual environment step. Replace `python3.12` with your installed Python 3.11+ command if needed.
+If already checked out, start with the virtual-environment step. Use an installed Python 3.11+ executable if `python3.12` is unavailable. Repository access is required for SSH cloning.
 
-Open the **[local dashboard](http://127.0.0.1:8000/)**, choose a data category, and click **Run flow**. Run one request at a time during the demo.
+`setup_testnet.py` creates disposable buyer and merchant Testnet wallets when `.env` is absent, funds inactive accounts through the faucet, and preserves existing configuration. Seeds stay in the ignored `.env`; a newly created file has owner-only permissions. It does **not** create or fund your browser wallet.
 
-The setup script creates disposable payer and merchant Testnet wallets, requests test XRP from the faucet, and saves their configuration in a Git-ignored `.env` file with permissions `600`. It preserves existing wallet configuration. No real funds or Mainnet wallet are required. Do not commit or share `.env`.
+Open [the dashboard](http://127.0.0.1:8000/) and:
 
-For subsequent starts, run this from the repository directory:
+1. Select a data product.
+2. Complete customer checkout using a funded Testnet wallet or the **mock card** flow.
+3. Click **Run paid procurement**. Even when customer checkout is mocked, the supplier purchase still uses real Testnet XRP.
+4. Inspect the selection explanation, quote, transaction and separate data-acceptance result.
+5. Open Audit Ledger for the recorded evidence.
 
-```sh
-sh start.sh
-```
+For subsequent starts, run `sh start.sh`. It binds to `127.0.0.1:8000`. Run one backend instance per checkout database and one procurement at a time.
 
-The backend listens only on `127.0.0.1:8000` and serves both the dashboard and business API. Restart it after closing the terminal or rebooting. See the [local setup guide](LOCAL_SETUP.md) (Chinese) for additional environment details.
-
-## View the presentations
-
-- **[Product story v2](relay-business-deck-v2.html)**: a 10-slide presentation covering the product, customer scenario, delivered result, reasons to pay, business model, and technical mechanism.
-- [Original presentation](relay-business-deck.html): the earlier version, retained for reference.
-
-GitHub displays HTML files as source code. After cloning, open a file directly in your browser, or run a static server from the repository directory in another terminal:
+To use another port, keep the backend and mirror self-URL aligned:
 
 ```sh
-python3 -m http.server 8765 --bind 127.0.0.1
+RELAY_SELF_URL=http://127.0.0.1:8001 .venv/bin/python -m uvicorn orchestrator:app --host 127.0.0.1 --port 8001
 ```
 
-Open the **[local v2 presentation](http://127.0.0.1:8765/relay-business-deck-v2.html)** and use the arrow keys to navigate. Port 8765 serves static content; purchases still require the business backend on port 8000. These localhost links point to the viewer's own computer, not a public deployment.
+See [local setup](LOCAL_SETUP.md) and [checkout details](CHECKOUT_DEMO.md).
+
+## Main procurement flow
+
+```mermaid
+flowchart LR
+    A[Structured request] --> B[Customer checkout]
+    B --> C[Unpaid source probes]
+    C --> D[Policy filter and selection explanation]
+    D --> E[Final 402 quote checks]
+    E --> F[Sign and settle on XRPL Testnet]
+    F --> G[Independent payment confirmation]
+    G --> H[Sample delivery and acceptance checks]
+    H --> I[Receipt and audit evidence]
+```
+
+Discovery probes two configured vendor endpoints, with labeled fallback declarations when unavailable. It does not dynamically search the entire marketplace. Eligible candidates are ranked by lowest price, with stable input order breaking ties. The decision record explains this rule and preserves the request, policy and candidate evidence.
+
+Before signing, Relay checks the final quote's scheme, network, asset, recipient, exact price and spending limits. It disables redirects on the mirror purchase requests. Independent chain confirmation checks validated success, payment type, payer, recipient and exact delivered amount, rejecting partial payments.
+
+### Payment success is separate from data acceptance
+
+| Product | Delivered sample | Acceptance under the default request |
+| --- | --- | --- |
+| CompliancePulse · Global LEI lookup | Stored legal-entity registration sample | `unknown`: source authenticity and observation time are not verified |
+| MacroPulse · BLS wage benchmarks | May 2023 US legal-services wage sample | `rejected`: historical data fails the 30-day freshness requirement |
+
+The validator reports category, required fields, region, freshness and provenance checks. It does not independently certify source authenticity; **none of the current samples qualifies for fully accepted delivery**.
+
+- `payment_status=confirmed` means the expected supplier payment was independently confirmed.
+- `validation_status=unknown` or `rejected` describes the data result, independently of payment.
+- `phase=delivery_needs_review` is the expected outcome for current samples after confirmed payment.
+- `phase=delivered` is reserved for confirmed payment **and** accepted data.
+- An uncertain payment remains `unknown` / `settlement_unconfirmed`; it is not proof of non-payment.
+
+Confirmed supplier spend still counts toward the applicant cap when acceptance fails. No automatic refund, payment reversal or operational human-review queue is implemented.
 
 ## What is real and what is simulated
 
-| Component | Current implementation |
+| Area | Implemented scope |
 | --- | --- |
-| Vendor discovery | Live, unpaid HTTP 402 probes of two configured resources; no dynamic search across the entire Bazaar directory |
-| Unavailable sources | Each resource can fall back independently to a fixture, labeled as fallback in the dashboard; mirror purchases remain available |
-| Policy checks | Server-side checks of price, cumulative spend, category, trust threshold, and freshness fields; trust and freshness values include demo assumptions |
-| Payment | A local payer wallet sends XRP Testnet funds to the local mirror's merchant account |
-| Original vendors | Their declarations advertise Mainnet `xrpl:0`; the demo does not pay them |
-| Data delivery | LEI returns a stored vendor sample; the wage mirror returns a cited historical BLS wage sample. Neither verifies the current applicant |
-| Receipts | Real transaction hashes, independent on-chain confirmation, and balance lookups; audit records are appended to local JSONL |
-| Platform billing | Demo ledger calculations only; no actual collection from lenders |
+| Customer wallet checkout | GemWallet or manual transaction verification; **0.10 test XRP**, plus network fee; recipient, destination tag, amount and hash-reuse checks |
+| Customer card checkout | **USD 0.50 mock**, with success, decline, retry and cancellation; no processor or real card collection |
+| Supplier payment | **20,000 drops / 0.02 test XRP** to a local mirror merchant through x402; real signatures and Testnet settlement |
+| Original vendors | Declarations advertise Mainnet `xrpl:0`; Relay pays the local `xrpl:1` mirrors, not those vendors |
+| Data and trust | Stored/synthetic demonstration data; candidate trust and endpoint freshness are demo proxies, not verified data quality |
+| Wallet workspace | Real keys, signatures and x402 SDK; ledger, merchant, balances, reserves and fees are simulated; hashes are not public explorer receipts |
+| Platform economics | Checkout prices are demo alternatives, not a live exchange-rate quote; no FX, RLUSD/USDT settlement or contributor payouts |
 
-One verified purchase paid **20,000 drops (0.02 XRP)** and returned `delivered / tesSUCCESS`: [Testnet transaction](https://testnet.xrpl.org/transactions/B92C9FC50F57E81F0814B46E55A9E59AE789DDABB73E2A8484C1D7EB8318C138). This verifies payment and sample delivery, not real data quality or production performance.
+A previously recorded supplier payment of 20,000 drops is available in the [Testnet explorer](https://testnet.xrpl.org/transactions/B92C9FC50F57E81F0814B46E55A9E59AE789DDABB73E2A8484C1D7EB8318C138). Its historical `delivered` status predates the current acceptance checks. It demonstrates payment and sample retrieval, not successful validation of applicant data.
 
-See [MARKETPLACE_TESTNET.md](MARKETPLACE_TESTNET.md) for source and mirror details.
+The legacy `billing.py` model uses a 17.5% fee and nominal USD 50 trial credit. Customer-checkout orders bypass it; current samples requiring review do not add a legacy platform fee. Presentation pricing and this legacy ledger are not reconciled production accounting.
 
-## Business model
+## Wallet workspace
 
-The proposed product charges lending institutions per completed data purchase, pays the supplier, and retains procurement service revenue. Its value lies in unified source access, procurement rules, and payment records.
+Visit `/wallets` after starting the backend. **Run full flow** demonstrates a master wallet funding two child wallets, sample purchases and a deliberately lost delivery response. **Recover same transaction** retrieves the response without a second charge.
 
-The presentation proposes **US$0.50 per query and US$10 in trial credit**, subject to validation. The current `billing.py` instead models **vendor cost plus a 17.5% platform fee and a nominal US$50 trial credit**. For accepted legacy purchases, trial credit covers vendor data cost only and platform fees are recorded. Current sample orders require review and do not add a legacy platform fee; confirmed supplier spend still counts toward the applicant cap. Billing switches automatically to pay-as-you-go when credit is exhausted.
+You can also create additional unique `agent-…` wallets with individual purchase budgets of **0.02–1 XRP**. Funding and purchase authorization are separate. Sessions persist across refresh; a new session preserves previous experiments.
 
-The running ledger uses a fixed conversion assumption, not live exchange rates. USD collection, USDT settlement, and currency conversion are not implemented; on-chain payments currently use XRP Testnet. The two pricing models have not been reconciled and should not be used to infer real profit margins.
+This workspace is isolated from the live Testnet buyer, customer checkout and billing records. See [wallet visualization](WALLET_VISUALIZATION.md) and [wallet engine](wallet_lab/README.md).
 
-## API example
+## API
 
-With the backend running, complete [checkout](CHECKOUT_DEMO.md) first, then use the paid checkout ID to start procurement:
+Default `POST /run` requires a paid checkout bound to the selected product. A minimal sequence is:
+
+| Step | Request | Body |
+| --- | --- | --- |
+| Create mock checkout | `POST /checkout` | `{"method":"fiat","data_type":"business_registration_status"}` |
+| Simulate customer payment | `POST /checkout/{id}/mock` | `{"outcome":"paid"}` |
+| Start supplier procurement | `POST /run` | `{"checkout_id":"<id>","data_type":"business_registration_status","applicant_region":"US","freshness_requirement_days":30}` |
+| Inspect progress | `GET /status` | — |
+| Inspect customer order | `GET /checkout/{id}` | — |
+
+**Step 3 spends Testnet XRP.** For policy checks without payment, use `POST /run` with `{"scenario":"over_cap"}`, `{"scenario":"blacklist"}` or `{"scenario":"no_candidate"}` instead.
+
+Other read endpoints: `/health`, `/marketplace/candidates`, `/policy.json`, `/billing`, `/audit` and `/audit.csv`. Audit JSON and CSV include decision, quote-check and acceptance evidence. `/status` is the current global run, not a per-ID task endpoint.
+
+A paid checkout starts one procurement; repeating its request returns the original request ID. Competing runs are rejected without consuming the second paid checkout. This does not provide complete supplier-payment recovery after a process failure.
+
+## Validation and limitations
+
+Run the offline tests from the repository root:
 
 ```sh
-curl -X POST http://127.0.0.1:8000/run \
-  -H 'Content-Type: application/json' \
-  -d '{"checkout_id":"YOUR_PAID_CHECKOUT_ID","applicant_score":612,"data_type":"business_registration_status","applicant_region":"US","freshness_requirement_days":30}'
-
-curl http://127.0.0.1:8000/status
+.venv/bin/python -m unittest test_procurement_checks test_customer_checkout test_marketplace test_wallet_visualization -q
+.venv/bin/python -m unittest discover -s wallet_lab -q
 ```
 
-`POST /run` returns a run ID asynchronously. `GET /status` reports the current global run state; it does not provide isolated task lookup by ID.
+The integration verification recorded **21 main-flow tests and 16 wallet-engine tests passing**. Tests mock networking and transfer no funds. Dashboard script syntax and the paid-but-rejected receipt were also checked using a read-only browser fixture. This is not a fresh live Testnet rehearsal or verification of the GemWallet extension approval flow.
 
-| Endpoint | Purpose |
+Current boundaries:
+
+- Single-user local service: no tenant authentication or production access control; checkout/session IDs act as bearer capabilities.
+- Global run state, supplier spend counters and legacy billing are in memory. Checkout records persist in `.checkout.sqlite3`; audit records in `audit_log.jsonl`; simulated wallet sessions in `.wallet-visualization/`. These runtime paths are Git-ignored.
+- Policy configuration is read-only. LLM goal interpretation, category-specific freshness policies, certified provenance and live applicant verification are not implemented.
+- Main supplier flow lacks persistent unknown-payment reconciliation and automatic delivery recovery. The offline wallet engine demonstrates recovery separately.
+- Real card processing, automatic refunds, seller onboarding/payouts and production accounting are not implemented.
+
+If a sample requires review, inspect its checks rather than repeat the purchase. If payment is uncertain or a process was interrupted, reconcile the existing payment before starting another purchase. For `HTTP 402` from `/run`, complete checkout first. For Testnet funding/RPC errors, check `.env` configuration and network access; never publish wallet seeds.
+
+## Project map and supporting material
+
+| Path | Responsibility |
 | --- | --- |
-| `GET /health` | Backend status and Testnet identifier |
-| `GET /marketplace/candidates` | Refresh both vendors' unpaid declarations |
-| `GET /policy.json` | Effective policy |
-| `GET /billing` | Demo billing balance |
-| `GET /audit` | Audit records as JSON |
-| `GET /audit.csv` | CSV export |
+| `orchestrator.py` | FastAPI app, mirror endpoints, procurement, state and audit exports |
+| `customer_checkout.py`, `customer-checkout.html` | Customer wallet/mock checkout and persistent order records |
+| `marketplace.py`, `policy_filter.py` | Source declarations, fallback samples and deterministic selection |
+| `procurement_checks.py` | Decision evidence, final quote binding, chain confirmation and data checks |
+| `relay-screen1-live.html` | Procurement terminal, policy display and audit dashboard |
+| `wallet_visualization.py`, `wallet-visualization.html`, `wallet_lab/` | Isolated interactive wallet simulation |
+| `billing.py` | Legacy demonstration billing model |
+| `docs/ripple/`, `skills/xrpl-agentic-resources/` | Imported challenge requirements, reference snapshots and developer context pack |
+| `tools/xrpl-feedback/` | Bundled feedback tooling; inactive, with no automatic submission configured |
 
-`POST /run` also accepts `scenario: "over_cap"`, `"blacklist"`, or `"no_candidate"` for policy tests without payment. The frontend stops polling on these terminal states; inspect their reasons through the status API or audit ledger.
+Start with [submission guide and architecture](SUBMISSION.md), [marketplace details](MARKETPLACE_TESTNET.md), [checkout guide](CHECKOUT_DEMO.md), and [wallet guide](WALLET_VISUALIZATION.md). [Ripple integration notes](docs/ripple/INTEGRATION.md) record the imported revision and feedback setup boundaries. Reference snapshots require refresh before use as live network facts.
 
-## Current limitations
+The [v4 presentation](relay-business-deck-v4.html) is the latest committed product deck; [v3](relay-business-deck-v3.html), [v2](relay-business-deck-v2.html) and the [original](relay-business-deck.html) are retained for history. Download/open the HTML locally to view slides; GitHub shows their source. The deck describes product direction, not a checklist of implemented capabilities.
 
-- Policy configuration is read-only. Candidate selection uses deterministic rules and demo trust/freshness proxies. Delivery checks required fields, explicit observation dates and region, but cannot certify provenance. Category-specific freshness policy and LLM-based goal interpretation are not implemented.
-- No-candidate outcomes produce status and audit records, without an actionable human-review queue. PDF export is not implemented.
-- Final quote binding and terminal-state handling are implemented. Persistent recovery of an unknown supplier payment and automatic refunds still need work.
-- Run state is global, with no multi-tenancy, authentication, or complete concurrency and idempotency protection.
-- Billing and cumulative spend are held in memory and reset on restart. JSONL audit records persist but are not tamper-proof.
-
-See [PRD v2.1](relay-prd-v2-gap-execution-plan.md) (Chinese) for the full gap review, priorities, and acceptance criteria. [README_AUDIT.md](README_AUDIT.md) contains historical test records; some completion claims are outdated, so use the current PRD review as the implementation baseline.
-
-## Troubleshooting
-
-| Symptom | Action |
-| --- | --- |
-| `failed to start run` or a JSON/SyntaxError | Run `sh start.sh` and use the dashboard on port 8000. Refresh old pages after code changes. |
-| No compatible `x402-xrpl` installation found | Check that the virtual environment uses Python 3.11+, rather than system Python 3.9. |
-| Missing or inactive wallets | Run `setup_testnet.py` in the virtual environment. Existing `.env` configuration is preserved; test funds are requested only for wallets that have not been activated. |
-| RPC request fails | Check internet connectivity and `XRPL_TESTNET_RPC_URL` in `.env`. The setup script configures `https://s.altnet.rippletest.net:51234/`. |
-| GitHub repository returns 404 | Sign in to a GitHub account with repository access in the browser. Git SSH authentication and browser sign-in are separate. |
-
-## Code structure
-
-| File | Responsibility |
-| --- | --- |
-| `orchestrator.py` | FastAPI service, mirror routes, purchase flow, state, and audit records |
-| `marketplace.py` | Resource declaration adapter and fallback samples |
-| `policy_filter.py` | Policies, filtering, and test fixtures |
-| `billing.py` | Trial credit and platform fee ledger |
-| `relay-screen1-live.html` | Dashboard with three tabs |
-| `setup_testnet.py` / `start.sh` | Wallet configuration and local startup |
-| `requirements.txt` | Dependency versions from the verified environment |
-
-## Wallet visualization
-
-Open **Wallets** from the dashboard or visit `/wallets` to explore a master wallet funding two independent purchasing wallets. Create wallets, allocate funds, purchase sample data, and recover a lost delivery without paying again. This page uses real signatures with **offline simulated settlement**, separate from the Testnet checkout flow. See [WALLET_VISUALIZATION.md](WALLET_VISUALIZATION.md).
+[Data-contract design](RELAY_DATA_CONTRACT_DESIGN.md), [judge-feedback design](RELAY_JUDGE_FEEDBACK_DESIGN.md), [PRD gap plan](relay-prd-v2-gap-execution-plan.md) and [historical audit](README_AUDIT.md) contain proposals and earlier observations. Use this README and current code for implementation status.
