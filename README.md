@@ -1,37 +1,37 @@
 # Relay
 
-**面向贷款机构的按需数据采购代理。**
+**An on-demand data procurement agent for lenders.**
 
-贷方提出缺少什么数据，Relay 按采购规则选择资源、读取报价、完成付款，并返回数据及可追溯的采购凭证。贷方通过一次 Relay 集成使用多个数据来源；贷款审批仍由贷方负责。
+A lender requests missing data. Relay selects a resource under the lender's procurement rules, reads the quote, handles payment, and returns data with a traceable purchase receipt. One Relay integration provides access to multiple data sources; lending decisions remain with the lender.
 
-本仓库是 hackathon 演示：**真实 XRP 测试网结算 + 本地供应商镜像 + 样例数据交付**，不是生产贷款系统。
+This repository is a hackathon demo using **real XRP Testnet settlement, local vendor mirrors, and sample data delivery**. It is not a production lending system.
 
-## 演示什么
+## What the demo shows
 
-看板包含三个标签页：
+The dashboard has three tabs:
 
-| 页面 | 内容 |
+| Screen | Contents |
 | --- | --- |
-| Live Shopping | 请求信息、供应商声明、筛选、402 报价、付款状态、交付数据及链上凭证 |
-| Policy Config | 当前生效的预算与类别规则，只读展示 |
-| Audit Ledger | 采购记录、候选与拒绝原因、交易链接和 CSV 导出 |
+| Live Shopping | Request details, vendor declarations, filtering, HTTP 402 quotes, payment status, delivered data, and on-chain receipts |
+| Policy Config | Read-only display of effective budget and category rules |
+| Audit Ledger | Purchase records, candidates and rejection reasons, transaction links, and CSV export |
 
-当前可选择两个数据产品：
+Two data products are available:
 
-| 产品 | 数据类别 | Demo 交付 |
+| Product | Data category | Demo output |
 | --- | --- | --- |
-| CompliancePulse · Global LEI lookup | 企业注册状态 | 法定名称、实体状态、注册状态等样例 |
-| MacroPulse · BLS wage benchmarks | 行业收入基准 | 劳动统计序列的声明样例 |
+| CompliancePulse · Global LEI lookup | Business registration status | Sample legal name, entity status, registration status, and related fields |
+| MacroPulse · BLS wage benchmarks | Industry income benchmarks | An advertised sample of labor statistics series |
 
-成功流程：
+A successful run follows this flow:
 
-> 结构化请求 → 来源探测 → 策略筛选 → HTTP 402 报价 → 签名付款 → 测试网结算 → 独立链上确认 → 数据与审计凭证
+> Structured request → Source discovery → Policy filtering → HTTP 402 quote → Signed payment → Testnet settlement → Independent on-chain confirmation → Data and audit receipt
 
-Relay 只有在独立链上查询确认成功后，才将结果标记为 `delivered`。
+Relay marks a result as `delivered` only after an independent on-chain lookup confirms success.
 
-## 快速开始
+## Quick start
 
-以下命令适用于 macOS / Linux，需要 **Python 3.11+**（本机使用 3.12 验证）、Git 和外网连接。GitHub 仓库若为私有，需要有访问权限；未登录浏览器可能显示 404。
+These commands target macOS / Linux and require **Python 3.11+** (verified locally with 3.12), Git, and internet access. Access to a private GitHub repository requires permission; a signed-out browser may show a 404 page.
 
 ```sh
 git clone git@github.com:geekysong/demo.git
@@ -42,61 +42,61 @@ python3.12 -m venv .venv
 sh start.sh
 ```
 
-如果已下载仓库，从 `cd demo` 后的步骤开始；可将 `python3.12` 替换为本机的 Python 3.11+ 命令。
+If you already downloaded the repository, enter its directory and start with the virtual environment step. Replace `python3.12` with your installed Python 3.11+ command if needed.
 
-打开 **[本地业务看板](http://127.0.0.1:8000/)**，选择数据类别并点击 **Run flow**。正常演示请一次运行一个请求。
+Open the **[local dashboard](http://127.0.0.1:8000/)**, choose a data category, and click **Run flow**. Run one request at a time during the demo.
 
-初始化脚本会创建付款和收款两个一次性测试网钱包，通过水龙头申请测试 XRP，并保存到被 Git 忽略的 `.env`（权限 `600`）。已有配置时不会覆盖钱包。无需真实资金或主网钱包；请勿提交或分享 `.env`。
+The setup script creates disposable payer and merchant Testnet wallets, requests test XRP from the faucet, and saves their configuration in a Git-ignored `.env` file with permissions `600`. It preserves existing wallet configuration. No real funds or Mainnet wallet are required. Do not commit or share `.env`.
 
-之后重新启动只需在仓库目录执行：
+For subsequent starts, run this from the repository directory:
 
 ```sh
 sh start.sh
 ```
 
-后端仅监听 `127.0.0.1:8000`，同时提供看板与业务 API。终端关闭或电脑重启后，需要重新启动服务。更多环境说明见 [本地配置指南](LOCAL_SETUP.md)。
+The backend listens only on `127.0.0.1:8000` and serves both the dashboard and business API. Restart it after closing the terminal or rebooting. See the [local setup guide](LOCAL_SETUP.md) (Chinese) for additional environment details.
 
-## 查看演示文稿
+## View the presentations
 
-- **[产品故事 v2](relay-business-deck-v2.html)**：产品本质、客户场景、交付结果、付费理由、商业模式及技术机制，共 10 页。
-- [原版演示稿](relay-business-deck.html)：保留的早期版本。
+- **[Product story v2](relay-business-deck-v2.html)**: a 10-slide presentation covering the product, customer scenario, delivered result, reasons to pay, business model, and technical mechanism.
+- [Original presentation](relay-business-deck.html): the earlier version, retained for reference.
 
-HTML 文件在 GitHub 中显示为源码。克隆后可用浏览器直接打开文件，或在仓库目录另开终端运行：
+GitHub displays HTML files as source code. After cloning, open a file directly in your browser, or run a static server from the repository directory in another terminal:
 
 ```sh
 python3 -m http.server 8765 --bind 127.0.0.1
 ```
 
-再打开 **[本地 v2 演示稿](http://127.0.0.1:8765/relay-business-deck-v2.html)**，使用左右方向键翻页。8765 是静态展示服务；运行采购流程仍需启动 8000 业务后端。上述 localhost 链接只指向访问者自己的电脑，不是公开部署地址。
+Open the **[local v2 presentation](http://127.0.0.1:8765/relay-business-deck-v2.html)** and use the arrow keys to navigate. Port 8765 serves static content; purchases still require the business backend on port 8000. These localhost links point to the viewer's own computer, not a public deployment.
 
-## 真实与模拟的边界
+## What is real and what is simulated
 
-| 环节 | 当前实现 |
+| Component | Current implementation |
 | --- | --- |
-| 供应商发现 | 实时读取两个已配置资源的未付款 402 声明；不是动态搜索整个 Bazaar 目录 |
-| 来源失联 | 每个资源可单独回退到 fixture，看板标为 fallback；仍可执行镜像采购 |
-| 策略 | 服务端执行价格、累计额度、类别、信任阈值和新鲜度字段检查；信任分及新鲜度字段含 Demo 假设 |
-| 支付 | 本地付款钱包向本地镜像的收款账户支付 XRP Testnet 测试币 |
-| 原始供应商 | 声明使用主网 `xrpl:0`；Demo 没有向它们付款 |
-| 数据交付 | 镜像返回保存的供应商样例，不是对当前申请人的实时核验 |
-| 凭证 | 真实交易哈希、独立链上确认和余额查询；审计追加到本地 JSONL |
-| 平台收费 | 仅计算演示账本，不向贷方真实收费 |
+| Vendor discovery | Live, unpaid HTTP 402 probes of two configured resources; no dynamic search across the entire Bazaar directory |
+| Unavailable sources | Each resource can fall back independently to a fixture, labeled as fallback in the dashboard; mirror purchases remain available |
+| Policy checks | Server-side checks of price, cumulative spend, category, trust threshold, and freshness fields; trust and freshness values include demo assumptions |
+| Payment | A local payer wallet sends XRP Testnet funds to the local mirror's merchant account |
+| Original vendors | Their declarations advertise Mainnet `xrpl:0`; the demo does not pay them |
+| Data delivery | Mirrors return stored vendor samples, not live verification of the current applicant |
+| Receipts | Real transaction hashes, independent on-chain confirmation, and balance lookups; audit records are appended to local JSONL |
+| Platform billing | Demo ledger calculations only; no actual collection from lenders |
 
-一次已验证的采购支付了 **20,000 drops（0.02 XRP）**，并返回 `delivered / tesSUCCESS`：[测试网交易](https://testnet.xrpl.org/transactions/B92C9FC50F57E81F0814B46E55A9E59AE789DDABB73E2A8484C1D7EB8318C138)。这验证了付款与样例交付流程，不代表已验证真实数据质量或生产性能。
+One verified purchase paid **20,000 drops (0.02 XRP)** and returned `delivered / tesSUCCESS`: [Testnet transaction](https://testnet.xrpl.org/transactions/B92C9FC50F57E81F0814B46E55A9E59AE789DDABB73E2A8484C1D7EB8318C138). This verifies payment and sample delivery, not real data quality or production performance.
 
-供应商来源及镜像说明见 [MARKETPLACE_TESTNET.md](MARKETPLACE_TESTNET.md)。
+See [MARKETPLACE_TESTNET.md](MARKETPLACE_TESTNET.md) for source and mirror details.
 
-## 商业模式
+## Business model
 
-产品拟向贷款机构按完成的数据采购收费，支付供应商成本后保留采购服务收入。价值在于统一来源接入、采购规则与付款记录。
+The proposed product charges lending institutions per completed data purchase, pays the supplier, and retains procurement service revenue. Its value lies in unified source access, procurement rules, and payment records.
 
-演示文稿提出 **US$0.50/次、US$10 试用额度**，属于待验证的商业方案。当前 `billing.py` 仍采用**数据成本加 17.5% 平台费、标称 US$50 试用额度**：额度只覆盖数据成本，平台费照常记账；耗尽后自动转为按用量计费。
+The presentation proposes **US$0.50 per query and US$10 in trial credit**, subject to validation. The current `billing.py` instead models **vendor cost plus a 17.5% platform fee and a nominal US$50 trial credit**. Trial credit covers vendor data cost only; platform fees are still recorded. Billing switches automatically to pay-as-you-go when credit is exhausted.
 
-运行账本使用固定换算假设，并非实时汇率。USD 收费、USDT 结算和货币兑换尚未实现；当前链上支付资产为 XRP Testnet。两套定价方案尚未统一，不应据此推导真实利润率。
+The running ledger uses a fixed conversion assumption, not live exchange rates. USD collection, USDT settlement, and currency conversion are not implemented; on-chain payments currently use XRP Testnet. The two pricing models have not been reconciled and should not be used to infer real profit margins.
 
-## API 示例
+## API example
 
-后端启动后，可通过 API 发起与看板相同的采购：
+With the backend running, start the same purchase flow through the API:
 
 ```sh
 curl -X POST http://127.0.0.1:8000/run \
@@ -106,47 +106,47 @@ curl -X POST http://127.0.0.1:8000/run \
 curl http://127.0.0.1:8000/status
 ```
 
-`POST /run` 异步返回运行 ID；`GET /status` 返回当前全局任务状态，不是按 ID 隔离的任务查询接口。
+`POST /run` returns a run ID asynchronously. `GET /status` reports the current global run state; it does not provide isolated task lookup by ID.
 
-| 接口 | 用途 |
+| Endpoint | Purpose |
 | --- | --- |
-| `GET /health` | 后端状态及测试网标识 |
-| `GET /marketplace/candidates` | 刷新两家供应商的未付款声明 |
-| `GET /policy.json` | 生效策略 |
-| `GET /billing` | 演示计费余额 |
-| `GET /audit` | 审计 JSON |
-| `GET /audit.csv` | 导出 CSV |
+| `GET /health` | Backend status and Testnet identifier |
+| `GET /marketplace/candidates` | Refresh both vendors' unpaid declarations |
+| `GET /policy.json` | Effective policy |
+| `GET /billing` | Demo billing balance |
+| `GET /audit` | Audit records as JSON |
+| `GET /audit.csv` | CSV export |
 
-`POST /run` 另接受 `scenario: "over_cap"`、`"blacklist"` 或 `"no_candidate"`，用于不付款的策略测试。前端尚未完整呈现这些终态，请通过 API 状态或审计查看结果。
+`POST /run` also accepts `scenario: "over_cap"`, `"blacklist"`, or `"no_candidate"` for policy tests without payment. The frontend does not yet fully handle these terminal states; inspect their results through the status API or audit ledger.
 
-## 当前限制
+## Current limitations
 
-- 策略配置只读；可解释性筛选、按类别的新鲜度与实际数据时点核验尚未实现，region 只记录不筛选。
-- 无候选只产生状态与审计，没有可操作的人审队列；PDF 导出尚未实现。
-- 部分异常终态的前端处理、付款前报价一致性验证仍需完善。
-- 单全局运行状态；无多租户、认证或完整并发/幂等保护。
-- 计费和累计额度保存在内存，重启清零；JSONL 审计保留，但不具备防篡改保证。
+- Policy configuration is read-only. Explainability filtering, category-specific freshness rules, and actual data timestamp verification are not implemented. Region is logged but not used for filtering.
+- No-candidate outcomes produce status and audit records, without an actionable human-review queue. PDF export is not implemented.
+- Frontend handling of some exceptional terminal states and pre-payment quote consistency checks need further work.
+- Run state is global, with no multi-tenancy, authentication, or complete concurrency and idempotency protection.
+- Billing and cumulative spend are held in memory and reset on restart. JSONL audit records persist but are not tamper-proof.
 
-完整差异、优先级和验收标准见 [PRD v2.1](relay-prd-v2-gap-execution-plan.md)。[README_AUDIT.md](README_AUDIT.md) 是历史测试记录，其中部分完成状态已过时，以当前 PRD 的核对结果为准。
+See [PRD v2.1](relay-prd-v2-gap-execution-plan.md) (Chinese) for the full gap review, priorities, and acceptance criteria. [README_AUDIT.md](README_AUDIT.md) contains historical test records; some completion claims are outdated, so use the current PRD review as the implementation baseline.
 
-## 常见问题
+## Troubleshooting
 
-| 现象 | 处理 |
+| Symptom | Action |
 | --- | --- |
-| `failed to start run` 或 JSON/SyntaxError | 运行 `sh start.sh`，使用 8000 看板地址；修改代码后刷新旧页面 |
-| 找不到 `x402-xrpl` 安装版本 | 检查虚拟环境是否使用 Python 3.11+，不要使用系统 Python 3.9 |
-| 钱包缺失或未激活 | 在虚拟环境中运行 `setup_testnet.py`；已有 `.env` 时保留原配置，只为未激活钱包申请测试币 |
-| RPC 请求失败 | 检查外网连接及 `.env` 的 `XRPL_TESTNET_RPC_URL`；初始化脚本配置为 `https://s.altnet.rippletest.net:51234/` |
-| GitHub 仓库链接 404 | 在浏览器登录有仓库权限的 GitHub 账号；Git SSH 登录与浏览器登录互不替代 |
+| `failed to start run` or a JSON/SyntaxError | Run `sh start.sh` and use the dashboard on port 8000. Refresh old pages after code changes. |
+| No compatible `x402-xrpl` installation found | Check that the virtual environment uses Python 3.11+, rather than system Python 3.9. |
+| Missing or inactive wallets | Run `setup_testnet.py` in the virtual environment. Existing `.env` configuration is preserved; test funds are requested only for wallets that have not been activated. |
+| RPC request fails | Check internet connectivity and `XRPL_TESTNET_RPC_URL` in `.env`. The setup script configures `https://s.altnet.rippletest.net:51234/`. |
+| GitHub repository returns 404 | Sign in to a GitHub account with repository access in the browser. Git SSH authentication and browser sign-in are separate. |
 
-## 代码结构
+## Code structure
 
-| 文件 | 职责 |
+| File | Responsibility |
 | --- | --- |
-| `orchestrator.py` | FastAPI 服务、镜像路由、采购流程、状态及审计 |
-| `marketplace.py` | 资源声明适配与 fallback 样例 |
-| `policy_filter.py` | 策略、筛选与测试夹具 |
-| `billing.py` | 试用额度与平台费账本 |
-| `relay-screen1-live.html` | 三个标签页的业务看板 |
-| `setup_testnet.py` / `start.sh` | 钱包配置与本地启动 |
-| `requirements.txt` | 已验证环境的依赖版本 |
+| `orchestrator.py` | FastAPI service, mirror routes, purchase flow, state, and audit records |
+| `marketplace.py` | Resource declaration adapter and fallback samples |
+| `policy_filter.py` | Policies, filtering, and test fixtures |
+| `billing.py` | Trial credit and platform fee ledger |
+| `relay-screen1-live.html` | Dashboard with three tabs |
+| `setup_testnet.py` / `start.sh` | Wallet configuration and local startup |
+| `requirements.txt` | Dependency versions from the verified environment |
