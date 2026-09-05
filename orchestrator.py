@@ -70,6 +70,7 @@ from x402_xrpl.clients.base import decode_payment_response, X402Client
 from x402_xrpl.types import PaymentRequirements
 
 import billing
+from procurement_checks import decision_record, validate_quote, confirm_payment, validate_delivery
 import customer_checkout
 import wallet_visualization
 import marketplace
@@ -259,9 +260,11 @@ def run_real_flow(
     applicant_score=None, data_type=None, applicant_region=None, freshness_requirement_days=None, customer_checkout_id=None,
 ):
     timestamp = datetime.now(timezone.utc).isoformat()
+    evidence = {"payment_status": "not_started", "validation_status": "not_checked", "decision": None, "quote_validation": None, "validation": None}
 
     def audit_base():
         return {
+            **evidence,
             "timestamp": timestamp, "request_id": request_id, "trigger_reason": trigger_reason,
             "applicant_id": applicant_id, "scenario": scenario,
             "customer_checkout_id": customer_checkout_id,
@@ -291,7 +294,7 @@ def run_real_flow(
         data_type=data_type, applicant_region=applicant_region,
         freshness_requirement_days=freshness_requirement_days,
         error=None, quote=None, tx_hash=None, settlement=None,
-        delivered=None, balance_before=None, balance_after=None, billing=None,
+        delivered=None, balance_before=None, balance_after=None, billing=None, **evidence,
     )
 
     # ---- Section 5 "Trigger threshold": only fires within the pre-defined
@@ -365,7 +368,11 @@ def run_real_flow(
 
         considered = build_candidates_considered(discovered, selected, rejected) \
             + build_not_discovered_entries(not_discovered, data_type)
-        set_state(phase="candidates", selected=selected, rejected=rejected, candidates_considered=considered)
+        evidence['decision'] = decision_record(selected, considered, {
+            'data_type': data_type, 'region': applicant_region,
+            'freshness_days': freshness_requirement_days,
+        }, effective_policy)
+        set_state(phase="candidates", selected=selected, rejected=rejected, candidates_considered=considered, **evidence)
         time.sleep(0.4)  # let the UI render the candidate reveal before the network calls start
 
         if scenario != "default":
@@ -394,14 +401,16 @@ def run_real_flow(
 
         # ---- Step 5: real unpaid GET -> real 402 ----
         selected_endpoint = SELF_URL_BASE + selected["testnet_path"]
-        resp1 = requests.get(selected_endpoint, timeout=30)
+        resp1 = requests.get(selected_endpoint, timeout=30, allow_redirects=False)
         if resp1.status_code != 402:
             raise RuntimeError(f"expected 402, got {resp1.status_code}: {resp1.text[:300]}")
         body = resp1.json()
         accepts = body["accepts"]
         reqs_dict = X402Client.default_payment_requirements_selector(accepts, None, "exact", None)
+        evidence['quote_validation'] = validate_quote(
+            reqs_dict, selected, PAY_TO, effective_policy, get_applicant_spent(applicant_id))
         reqs = PaymentRequirements.from_dict(reqs_dict)
-        set_state(phase="quoted", quote=reqs_dict)
+        set_state(phase="quoted", quote=reqs_dict, **evidence)
 
         # ---- Step 6: sign a real XRPL Payment tx and submit the retry ----
         set_state(phase="paying")
@@ -410,10 +419,11 @@ def run_real_flow(
         )
         x_payment = payer.create_payment_header(reqs)  # <-- real signing happens here
         x_payment = add_relay_comment(x_payment, buyer)
-        set_state(phase="settling")
+        evidence["payment_status"] = "unknown"
+        set_state(phase="settling", **evidence)
 
         # ---- Step 7: retry with signature -> facilitator verifies + settles server-side ----
-        resp2 = requests.get(selected_endpoint, headers={"PAYMENT-SIGNATURE": x_payment}, timeout=180)
+        resp2 = requests.get(selected_endpoint, headers={"PAYMENT-SIGNATURE": x_payment}, timeout=180, allow_redirects=False)
         if resp2.status_code != 200:
             raise RuntimeError(f"settlement failed: HTTP {resp2.status_code}: {resp2.text[:400]}")
 
@@ -433,18 +443,25 @@ def run_real_flow(
                     txr = client.request(Tx(transaction=tx_hash))
                     if txr.result.get("validated"):
                         chain_result = txr.result["meta"]["TransactionResult"]
-                        confirmed = chain_result == "tesSUCCESS"
+                        confirmed = confirm_payment(txr.result, buyer.classic_address, PAY_TO, selected["price_drops"])
                         break
                 except Exception:
                     pass
                 time.sleep(1)
 
-        balance_after = query_balance(buyer.classic_address)
-
-        delivery_status = "delivered" if confirmed else "settlement_unconfirmed"
-        bill = None
+        evidence['payment_status'] = 'confirmed' if confirmed else 'unknown'
+        # Record confirmed vendor spend even when delivery decoding/validation fails.
         if confirmed:
             add_applicant_spend(applicant_id, selected["price_drops"])
+        set_state(**evidence)
+        balance_after = query_balance(buyer.classic_address)
+        payload = resp2.json()
+        evidence['validation'] = validate_delivery(payload, data_type, applicant_region,
+                                                   effective_policy['freshness_max_days'])
+        evidence['validation_status'] = evidence['validation']['status']
+        delivery_status = ('delivered' if evidence['validation_status'] == 'accepted' else 'delivery_needs_review') if confirmed else 'settlement_unconfirmed'
+        bill = None
+        if confirmed and evidence["validation_status"] == "accepted":
             # ---- Section 3 (Pricing): trial credit + platform fee, applied
             # to the billing ledger — NOT a second on-chain payment. See
             # billing.py for why. ----
@@ -453,7 +470,8 @@ def run_real_flow(
         # ---- Step 8: data already came back in resp2 ----
         set_state(
             phase=delivery_status,
-            delivered=resp2.json(),
+            delivered=payload,
+            **evidence,
             chain_result=chain_result,
             confirmed=confirmed,
             balance_after=balance_after,
@@ -475,13 +493,13 @@ def run_real_flow(
             "billing_mode_after": bill["billing_mode_after"] if bill else None,
         })
     except Exception as e:
-        set_state(phase="failed", error=f"{e}", traceback=traceback.format_exc())
+        set_state(phase="failed", error=f"{e}", traceback=traceback.format_exc(), **evidence)
         append_audit({
             **audit_base(),
-            "candidates_considered": None,
-            "final_selection": None,
-            "price_drops": None,
-            "xrpl_transaction_hash": None,
+            "candidates_considered": get_state().get("candidates_considered"),
+            "final_selection": get_state().get("selected"),
+            "price_drops": (get_state().get("quote") or {}).get("amount"),
+            "xrpl_transaction_hash": get_state().get("tx_hash"),
             "delivery_status": f"failed: {e}",
         })
 
@@ -579,6 +597,8 @@ async def run(request: Request):
             tx_hash=None,
             delivered=None,
             confirmed=None,
+            decision=None, quote_validation=None, validation=None,
+            payment_status="not_started", validation_status="not_checked",
             error=None,
         )
         RUN_ACTIVE = True
@@ -641,6 +661,7 @@ async def audit_csv():
         "applicant_score", "data_type", "applicant_region", "freshness_requirement_days",
         "candidates_considered", "final_selection", "price_drops",
         "xrpl_transaction_hash", "delivery_status",
+        "payment_status", "validation_status", "decision", "quote_validation", "validation",
         "platform_fee_drops", "billed_total_drops", "billing_mode_after",
     ]
     buf = io.StringIO()
@@ -650,6 +671,8 @@ async def audit_csv():
         row = dict(r)
         row["candidates_considered"] = json.dumps(row.get("candidates_considered"))
         row["final_selection"] = json.dumps(row.get("final_selection"))
+        for key in ("decision", "quote_validation", "validation"):
+            row[key] = json.dumps(row.get(key))
         w.writerow({k: row.get(k) for k in fieldnames})
     return Response(content=buf.getvalue(), media_type="text/csv")
 

@@ -370,6 +370,9 @@
     renderRail(s.phase);
 
     if (s.selected) renderCandidates(s.selected, s.rejected);
+    if (s.decision) onceLog('decision', s.decision.explanation);
+    if (s.quote_validation) onceLog('quote-check', 'Final quote binding and budget: ' + s.quote_validation.status);
+    if (s.validation) onceLog('validation', 'Data acceptance: ' + s.validation.status);
 
     if (s.buyer_address) onceLog('buyer', `Relay Agent wallet (testnet): ${s.buyer_address}`);
     if (s.balance_before != null) onceLog('bal0', `buyer balance before (on-chain, queried): ${s.balance_before} drops`);
@@ -381,8 +384,8 @@
     if (s.chain_result) onceLog('chainresult', `on-chain result: ${s.chain_result} · validated: ${s.confirmed}`, s.confirmed ? 'ok' : 'err');
     if (s.balance_after != null) onceLog('bal1', `buyer balance after (on-chain, queried): ${s.balance_after} drops (Δ ${s.balance_after - s.balance_before})`);
 
-    if (s.phase === 'delivered') {
-      statusPill.textContent = 'complete'; statusPill.className = 'status-pill done';
+    if (['delivered', 'delivery_needs_review'].includes(s.phase)) {
+      statusPill.textContent = s.phase === 'delivered' ? 'complete' : 'data needs review'; statusPill.className = 'status-pill ' + (s.phase === 'delivered' ? 'done' : 'error');
       renderReceipt(s);
       stopPolling();
     } else if (s.phase === 'failed') {
@@ -394,6 +397,10 @@
       statusPill.textContent = 'unconfirmed'; statusPill.className = 'status-pill error';
       renderReceipt(s);
       stopPolling();
+    } else if (['escalated_no_candidate', 'not_triggered', 'policy_test_complete'].includes(s.phase)) {
+      statusPill.textContent = s.phase; statusPill.className = 'status-pill error';
+      onceLog('terminal', s.error || 'Policy test complete; no payment made.');
+      stopPolling();
     } else if (s.phase && s.phase !== 'idle') {
       statusPill.textContent = s.phase; statusPill.className = 'status-pill running';
     }
@@ -402,18 +409,25 @@
   function renderReceipt(s){
     if (s.phase === 'failed') {
       receipt.innerHTML = `<div class="receipt-head"><div class="receipt-title err">Flow failed</div></div>
-        <div class="receipt-grid"><div class="full"><div class="k">error</div><div class="v">${s.error}</div></div></div>`;
+        <div class="receipt-grid"><div class="full"><div class="k">error</div><div class="v">${esc(s.error)}</div></div></div>`;
       receipt.classList.add('shown');
       return;
     }
     const explorerLink = s.tx_hash ? `https://testnet.xrpl.org/transactions/${s.tx_hash}` : null;
     receipt.innerHTML = `
       <div class="receipt-head">
-        <div class="receipt-title">Data delivered — settlement independently confirmed on-chain
+        <div class="receipt-title">${s.confirmed ? 'Payment confirmed — data acceptance: ' + esc(s.validation_status || 'not checked') : 'Payment confirmation pending'}
           <span class="verify-badge ${s.confirmed ? 'ok':'pending'}">${s.confirmed ? 'tesSUCCESS ✓' : 'unconfirmed'}</span>
         </div>
       </div>
       <div class="receipt-grid">
+        <div class="full"><div class="k">Agent decision · deterministic policy</div><div class="v">${esc(s.decision?.explanation || 'No decision recorded')}</div>
+          <div class="note">${esc((s.decision?.limitations || []).join(' '))}</div></div>
+        <div><div class="k">Payment status</div><div class="v">${esc(s.payment_status || 'unknown')}</div></div>
+        <div><div class="k">Quote check before signing</div><div class="v">${esc(s.quote_validation?.status || 'not checked')}</div></div>
+        <div class="full"><div class="k">Data acceptance · ${esc(s.validation_status || 'not checked')}</div>
+          ${(s.validation?.checks || []).map(c => `<div class="note" style="color:var(--text)">${esc(c.name)} · ${esc(c.status)} — ${esc(c.evidence)}</div>`).join('')}
+          <div class="note">Payment confirmation does not certify data quality. A failed check does not reverse an on-chain payment.</div></div>
         <div><div class="k">selected vendor</div><div class="v">${esc(s.selected.name)}</div></div>
         <div><div class="k">price paid</div><div class="v">${esc(s.selected.price_label || (s.quote.amount + ' drops'))}</div></div>
         <div><div class="k">buyer (Relay Agent wallet)</div><div class="v">${s.buyer_address}</div></div>
@@ -447,7 +461,7 @@
       const res = await fetch(apiUrl('/status'));
       const s = await res.json();
       renderFromState(s);
-      if(customerOrder?.request_id && ["delivered","failed","settlement_unconfirmed","escalated_no_candidate","not_triggered"].includes(s.phase)){customerOrder=await checkoutApi("/checkout/"+encodeURIComponent(customerOrder.id));renderCustomer();}
+      if(customerOrder?.request_id && ["delivered","delivery_needs_review","policy_test_complete","failed","settlement_unconfirmed","escalated_no_candidate","not_triggered"].includes(s.phase)){customerOrder=await checkoutApi("/checkout/"+encodeURIComponent(customerOrder.id));renderCustomer();}
     } catch(e) {
       addConsoleLine(`status poll error: ${e}`, 'err');
     }
@@ -663,7 +677,8 @@
           <td>${selStr}</td>
           <td class="mono">${esc(r.price_drops)}</td>
           <td class="mono">${txHtml}</td>
-          <td class="${statusCls}">${esc(status)}</td>
+          <td class="${statusCls}">${esc(status)}<br>payment: ${esc(r.payment_status || 'not recorded')}<br>acceptance: ${esc(r.validation_status || 'not recorded')}
+          ${r.validation ? `<details><summary>Acceptance checks</summary>${r.validation.checks.map(c => `<div>${esc(c.name)} · ${esc(c.status)} — ${esc(c.evidence)}</div>`).join('')}</details>` : ''}</td>
         </tr>`;
       }).join('') || `<tr><td colspan="8" class="empty">No audit records yet — trigger a run from Screen 1.</td></tr>`;
 
