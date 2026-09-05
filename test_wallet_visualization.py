@@ -68,6 +68,25 @@ class WalletVisualizationTests(unittest.TestCase):
         self.assertEqual(first['operation']['hash'],repeated['operation']['hash'])
         self.assertEqual(self.action('purchase').status_code,409)
 
+    def test_dynamic_children_purchase_and_persistence(self):
+        names = ['agent-research', 'agent-risk-2', 'agent-new', 'agent-4', 'agent-5']
+        for name in names:
+            response = self.create(name=name, budget=40000)
+            self.assertEqual(response.status_code, 200)
+        state = self.client.get(self.base).json()
+        children = [w for w in state['wallets'] if w['role'] == 'child']
+        self.assertEqual({w['id'] for w in children}, set(names))
+        self.assertEqual(len({w['address'] for w in children}), 5)
+        self.assertTrue(all(w['parent'] == 'master' and w['budget'] == 40000 for w in children))
+        self.assertEqual(self.action('fund', name='agent-risk-2').json()['operation']['status'], 'funded')
+        self.assertEqual(self.action('purchase', name='agent-risk-2').json()['operation']['status'], 'delivered')
+        self.assertEqual(self.create(name='agent-risk-2', budget=40000).status_code, 200)
+        self.assertEqual(self.create(name='agent-risk-2', budget=60000).status_code, 409)
+        self.assertEqual(self.action('fund', name='agent-missing').status_code, 409)
+        self.assertEqual(self.action('purchase', name='master').status_code, 409)
+        restored = self.client.get(self.base).json()
+        self.assertEqual(len(restored['wallets']), 7)
+
     def test_sessions_are_isolated(self):
         self.create()
         other=self.client.post('/wallets/sessions',json={}).json()

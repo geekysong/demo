@@ -92,9 +92,6 @@ def get_session(session_id: uuid.UUID):
 def create_child(session_id: uuid.UUID, body: ChildRequest):
     path = session_path(session_id)
     store = Store(path)
-    # This is a bounded local demo, with two named agents for the visualization.
-    if body.wallet_id not in ('agent-a', 'agent-b'):
-        raise HTTPException(422, 'Choose agent-a or agent-b')
     try:
         store.create_wallet(body.wallet_id, 'tenant-a', 'child', 'master', body.budget_drops)
     except ValueError as exc:
@@ -105,7 +102,7 @@ def create_child(session_id: uuid.UUID, body: ChildRequest):
 @router.post('/sessions/{session_id}/children/{wallet_id}/{action}')
 def act(session_id: uuid.UUID, wallet_id: str, action: str, body: ActionRequest):
     path = session_path(session_id)
-    if action not in ('fund', 'purchase') or wallet_id not in ('agent-a', 'agent-b'):
+    if action not in ('fund', 'purchase'):
         raise HTTPException(422, 'Unknown wallet action')
     store, _, merchant, engine = make_lab(path)
     try:

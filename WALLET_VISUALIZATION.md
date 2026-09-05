@@ -6,7 +6,8 @@ Start the existing backend with `sh start.sh`, then open http://127.0.0.1:8000/w
 
 - **Run full flow** creates a fresh session, two independent child wallets, funds each with 1.1 simulated XRP, and buys data from each. A final purchase deliberately loses its data response after settlement.
 - **Recover same transaction** retrieves that data with the same signed payment and hash, without another charge.
-- Individual controls create wallets, allocate funds, and purchase data. Agent A has a 0.06 XRP purchase budget; Agent B has 0.02 XRP. Purchases cost 0.02 XRP, excluding the simulated network fee.
+- **Create child wallet** accepts any unique `agent-…` ID and a purchase budget (0.02–1 XRP). Wallets can be added whenever needed; the graph and active-wallet count adapt to the actual number. Existing sessions retain all created wallets.
+- Individual controls allocate funds and purchase data. The optional walkthrough creates Agent A with a 0.06 XRP purchase budget and Agent B with 0.02 XRP; these are examples, not a wallet limit. Purchases cost 0.02 XRP, excluding the simulated network fee.
 - Click any transaction to inspect the signing wallet, hash, destination, and sample data.
 - Refresh preserves the current session; **New session** creates a separate experiment without deleting previous records.
 
