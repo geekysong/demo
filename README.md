@@ -6,6 +6,8 @@ A lender requests missing data. Relay selects a resource under the lender's proc
 
 This repository is a hackathon demo using **real XRP Testnet settlement, local vendor mirrors, and sample data delivery**. It is not a production lending system.
 
+See [submission guide, architecture and checklist](SUBMISSION.md) for the integrated Ripple challenge materials and current acceptance behavior.
+
 ## Customer payment
 
 The demo now supports a GemWallet / manual **XRPL Testnet** checkout and a separate **mock fiat card checkout**. Pay first, then run procurement. See [checkout flow and API changes](CHECKOUT_DEMO.md); default `/run` now requires a paid `checkout_id`.
@@ -31,7 +33,7 @@ A successful run follows this flow:
 
 > Structured request → Source discovery → Policy filtering → HTTP 402 quote → Signed payment → Testnet settlement → Independent on-chain confirmation → Data and audit receipt
 
-Relay marks a result as `delivered` only after an independent on-chain lookup confirms success.
+Relay checks the final quote before signing and independently verifies the payer, recipient and exact delivered amount on-chain. Payment and data acceptance are separate: `delivered` requires confirmed payment and accepted data. Current samples end at `delivery_needs_review`: LEI provenance/freshness remains unknown, and historical wages fail freshness. See [submission guide](SUBMISSION.md).
 
 ## Quick start
 
@@ -94,18 +96,18 @@ See [MARKETPLACE_TESTNET.md](MARKETPLACE_TESTNET.md) for source and mirror detai
 
 The proposed product charges lending institutions per completed data purchase, pays the supplier, and retains procurement service revenue. Its value lies in unified source access, procurement rules, and payment records.
 
-The presentation proposes **US$0.50 per query and US$10 in trial credit**, subject to validation. The current `billing.py` instead models **vendor cost plus a 17.5% platform fee and a nominal US$50 trial credit**. Trial credit covers vendor data cost only; platform fees are still recorded. Billing switches automatically to pay-as-you-go when credit is exhausted.
+The presentation proposes **US$0.50 per query and US$10 in trial credit**, subject to validation. The current `billing.py` instead models **vendor cost plus a 17.5% platform fee and a nominal US$50 trial credit**. For accepted legacy purchases, trial credit covers vendor data cost only and platform fees are recorded. Current sample orders require review and do not add a legacy platform fee; confirmed supplier spend still counts toward the applicant cap. Billing switches automatically to pay-as-you-go when credit is exhausted.
 
 The running ledger uses a fixed conversion assumption, not live exchange rates. USD collection, USDT settlement, and currency conversion are not implemented; on-chain payments currently use XRP Testnet. The two pricing models have not been reconciled and should not be used to infer real profit margins.
 
 ## API example
 
-With the backend running, start the same purchase flow through the API:
+With the backend running, complete [checkout](CHECKOUT_DEMO.md) first, then use the paid checkout ID to start procurement:
 
 ```sh
 curl -X POST http://127.0.0.1:8000/run \
   -H 'Content-Type: application/json' \
-  -d '{"applicant_score":612,"data_type":"business_registration_status","applicant_region":"US","freshness_requirement_days":30}'
+  -d '{"checkout_id":"YOUR_PAID_CHECKOUT_ID","applicant_score":612,"data_type":"business_registration_status","applicant_region":"US","freshness_requirement_days":30}'
 
 curl http://127.0.0.1:8000/status
 ```
@@ -121,13 +123,13 @@ curl http://127.0.0.1:8000/status
 | `GET /audit` | Audit records as JSON |
 | `GET /audit.csv` | CSV export |
 
-`POST /run` also accepts `scenario: "over_cap"`, `"blacklist"`, or `"no_candidate"` for policy tests without payment. The frontend does not yet fully handle these terminal states; inspect their results through the status API or audit ledger.
+`POST /run` also accepts `scenario: "over_cap"`, `"blacklist"`, or `"no_candidate"` for policy tests without payment. The frontend stops polling on these terminal states; inspect their reasons through the status API or audit ledger.
 
 ## Current limitations
 
-- Policy configuration is read-only. Explainability filtering, category-specific freshness rules, and actual data timestamp verification are not implemented. Region is logged but not used for filtering.
+- Policy configuration is read-only. Candidate selection uses deterministic rules and demo trust/freshness proxies. Delivery checks required fields, explicit observation dates and region, but cannot certify provenance. Category-specific freshness policy and LLM-based goal interpretation are not implemented.
 - No-candidate outcomes produce status and audit records, without an actionable human-review queue. PDF export is not implemented.
-- Frontend handling of some exceptional terminal states and pre-payment quote consistency checks need further work.
+- Final quote binding and terminal-state handling are implemented. Persistent recovery of an unknown supplier payment and automatic refunds still need work.
 - Run state is global, with no multi-tenancy, authentication, or complete concurrency and idempotency protection.
 - Billing and cumulative spend are held in memory and reset on restart. JSONL audit records persist but are not tamper-proof.
 
