@@ -39,5 +39,5 @@ sh start.sh
 - 平台费仅记入演示账本；计费余额和累计采购计数重启后清零。
 - `GET /health` 检查后端，`GET /status` 查看运行阶段，`GET /audit.csv` 导出审计记录。
 - `failed to start run`：确认 `sh start.sh` 正在运行，并使用 8000 地址；旧静态页面需刷新。
-- 旧 README 中的 `x402_poc`、`server.py`、`client.py`、`.env.server`、`.env.client`
+- 历史版本记录中的 `x402_poc`、`server.py`、`client.py`、`.env.server`、`.env.client`
   属于历史版本，本目录当前入口是 `orchestrator.py`，以本文为准。

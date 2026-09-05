@@ -1,171 +1,152 @@
-# Relay — Steps 5–7 real settlement (round 2, self-audit fixes + live UI)
+# Relay
 
-> Current local setup / 换机与启动说明：见 [LOCAL_SETUP.md](LOCAL_SETUP.md)。
-> 下文包含历史迭代记录；当前启动命令为 `sh start.sh`，看板地址为 http://127.0.0.1:8000/。
+**面向贷款机构的按需数据采购代理。**
 
-## Round 3: Screen 1 UI now drives the real flow
+贷方提出缺少什么数据，Relay 按采购规则选择资源、读取报价、完成付款，并返回数据及可追溯的采购凭证。贷方通过一次 Relay 集成使用多个数据来源；贷款审批仍由贷方负责。
 
-**Answer to the question that started this round: no, it's not showing fake
-states anymore.** Every phase the UI displays — Shopping, Quote, Settling,
-Delivered — comes from polling a real backend (`orchestrator.py`) that
-actually performs Steps 5-8 against XRPL Testnet, not a `setTimeout` timeline.
+本仓库是 hackathon 演示：**真实 XRP 测试网结算 + 本地供应商镜像 + 样例数据交付**，不是生产贷款系统。
 
-### New architecture
+## 演示什么
 
-`orchestrator.py` merges the merchant (require_payment) and the Relay Agent
-(payer) into one FastAPI app so a browser can drive and observe the flow:
+看板包含三个标签页：
 
-- `GET /` — serves `relay-screen1-live.html`
-- `POST /run` — kicks off `run_real_flow()` in a background thread
-- `GET /status` — the UI polls this every 400ms; every field is written at
-  the moment a real event happens (see `orchestrator.py` comments for exactly
-  which network/chain call triggers each state write)
-- `GET /income-verification` — the actual protected endpoint (unchanged from round 2)
+| 页面 | 内容 |
+| --- | --- |
+| Live Shopping | 请求信息、供应商声明、筛选、402 报价、付款状态、交付数据及链上凭证 |
+| Policy Config | 当前生效的预算与类别规则，只读展示 |
+| Audit Ledger | 采购记录、候选与拒绝原因、交易链接和 CSV 导出 |
 
-`run_real_flow()` does NOT call the convenience `x402_requests` wrapper used
-in round 2's `client.py` — that wrapper is a single opaque call with no
-hooks for intermediate state. Instead it replicates the same steps manually
-using the library's lower-level pieces (`XRPLPresignedPaymentPayer`,
-`PaymentRequirements`) so each real network call can update `STATE` between
-steps: raw unpaid GET → real 402 body → sign real XRPL tx → retry with
-signature → facilitator verifies+settles → **independent on-chain
-confirmation via a separate `Tx` RPC lookup** (same self-audit method as
-round 2, now built into the live flow instead of a manual check afterward).
+当前可选择两个数据产品：
 
-### Verified end-to-end via curl (i.e., exactly what the browser does)
+| 产品 | 数据类别 | Demo 交付 |
+| --- | --- | --- |
+| CompliancePulse · Global LEI lookup | 企业注册状态 | 法定名称、实体状态、注册状态等样例 |
+| MacroPulse · BLS wage benchmarks | 行业收入基准 | 劳动统计序列的声明样例 |
 
-```
-POST /run  -> {"started":true,"run_id":1}
-GET /status polled every 0.5s:
-  candidates -> paying -> settling -> confirming -> delivered
-```
+成功流程：
 
-Resulting transaction, independently confirmed:
-- tx hash: `4D8048BF8282D945086FB754E60DBBB61466C4FB191FA4287D0BAFA79455FD35`
-- explorer: https://testnet.xrpl.org/transactions/4D8048BF8282D945086FB754E60DBBB61466C4FB191FA4287D0BAFA79455FD35
-- `TransactionResult: tesSUCCESS`, `validated: true`, `delivered_amount: 5000`, `Destination` matches your address
-- balance moved `99974930 → 99969920` drops (confirmed via a second, separate `account_info` query — not the facilitator's word)
+> 结构化请求 → 来源探测 → 策略筛选 → HTTP 402 报价 → 签名付款 → 测试网结算 → 独立链上确认 → 数据与审计凭证
 
-### What the UI now shows vs what it showed before
+Relay 只有在独立链上查询确认成功后，才将结果标记为 `delivered`。
 
-| | Round 1 (static prototype) | Round 3 (this) |
-|---|---|---|
-| Candidate reveal | `setTimeout`, fixed 750ms | Real `policy_filter.py` output, rendered when `/status` reports it |
-| 402 quote | hardcoded string in HTML | Actual 402 response body from a real HTTP call, parsed and shown |
-| "Settling" state | `setTimeout`, fixed 1200ms | Held open for however long the real facilitator verify+settle call actually takes |
-| tx hash | `randHex()` — literally fake | From the facilitator's real `PAYMENT-RESPONSE` header |
-| "confirmed" badge | didn't exist | Result of a live, separate `Tx` RPC call the browser can also make itself — link is right there in the receipt |
-| Balance before/after | didn't exist | Two real `account_info` queries, shown with the delta |
+## 快速开始
 
-### Running it
+以下命令适用于 macOS / Linux，需要 **Python 3.11+**（本机使用 3.12 验证）、Git 和外网连接。GitHub 仓库若为私有，需要有访问权限；未登录浏览器可能显示 404。
 
-```bash
-cd x402_poc
-cp .env.server .env; cat .env.client >> .env   # orchestrator needs both merchant + buyer config
-python3 orchestrator.py
-# open http://localhost:8000/ and click "Run flow"
+```sh
+git clone git@github.com:geekysong/demo.git
+cd demo
+python3.12 -m venv .venv
+.venv/bin/python -m pip install -r requirements.txt
+.venv/bin/python setup_testnet.py
+sh start.sh
 ```
 
-### Known limitation carried over from round 2 (not re-fixed here)
+如果已下载仓库，从 `cd demo` 后的步骤开始；可将 `python3.12` 替换为本机的 Python 3.11+ 命令。
 
-Client-side polling degrades gracefully if `/status` 404s or the fetch
-throws (a red `status poll error` line appears), but the browser has no way
-to know if the *backend* thread silently died without ever writing
-`phase: "failed"` — it would just poll forever. Worth a timeout guard if
-this goes further than a demo.
+打开 **[本地业务看板](http://127.0.0.1:8000/)**，选择数据类别并点击 **Run flow**。正常演示请一次运行一个请求。
 
----
+初始化脚本会创建付款和收款两个一次性测试网钱包，通过水龙头申请测试 XRP，并保存到被 Git 忽略的 `.env`（权限 `600`）。已有配置时不会覆盖钱包。无需真实资金或主网钱包；请勿提交或分享 `.env`。
 
+之后重新启动只需在仓库目录执行：
 
-## Fixes applied after self-audit
-
-1. **Steps 2-4 → Step 5 handoff (was: hardcoded vendor).** Added `policy_filter.py`,
-   which runs the actual Policy Matrix filter (trust min 70, freshness max 30d,
-   category whitelist) against the same 3 mock candidates round 1's UI used.
-   `server.py` now imports this and configures its price/vendor/description from
-   whatever the filter selects, instead of a hand-typed string. Verified: server
-   startup log shows the real selection (`PayrollPing API` accepted, other two
-   rejected with reasons), `selection.json` is written at startup, and a fresh
-   on-chain settlement (`8D073D2EBB566B23FA205923EC2C43C3E474E5CA66FDD2C971938A67238990FF`,
-   confirmed `tesSUCCESS` via independent `tx` RPC lookup) used the filter's price.
-2. **Silent payment failure (was: exit 0 on failure).** `client.py` now checks
-   `status_code == 200` explicitly; anything else raises `PaymentFailed` and the
-   process exits non-zero. Verified against the same insufficient-funds scenario
-   as before — client now exits with code 1 and prints a `❌ PAYMENT FAILED` line
-   to stderr with a traceback, instead of quietly printing "not settled" and
-   returning 0.
-
-Not fixed, on purpose (deferred as demo-acceptable, per earlier discussion):
-RLUSD untested, ~8s measured latency vs. PRD's "3-5s", non-production
-facilitator, audit log fields incomplete relative to PRD Section 5's full
-schema. See the self-audit report in conversation for the full breakdown.
-
----
-
-
-Scope: only PRD Section 4, Steps 5–7 (quote → pay → settle). Vendor selection,
-Policy Matrix filtering, and the UI stay exactly as built in round 1 — this
-does not touch that HTML prototype.
-
-## What's real vs. what's still mocked
-
-| Piece | Status |
-|---|---|
-| Vendor discovery, candidate list, Policy Matrix filter (Steps 2–4) | still mocked — server.py hardcodes one already-selected vendor ("PayrollPing API"), same as the round-1 prototype |
-| HTTP 402 + payment requirements (Step 5) | **real** — served by `x402-xrpl`'s FastAPI middleware |
-| Wallet signs & submits XRPL Payment (Step 6) | **real** — signed with `xrpl-py`, submitted to XRPL Testnet |
-| Facilitator verify + settle (Step 7) | **real** — calls T54's public testnet facilitator (`xrpl-facilitator-testnet.t54.ai`) |
-| Data delivery (Step 8) | **real** — merchant returns the payload only after the facilitator confirms settlement |
-
-## Proof this actually ran (not a mock)
-
-- **tx hash**: `08C4D5A9CD9282DF8312F3EA9B1F400B218C1633A290FEC7C58DC58ECE7E7683`
-- **explorer**: https://testnet.xrpl.org/transactions/08C4D5A9CD9282DF8312F3EA9B1F400B218C1633A290FEC7C58DC58ECE7E7683
-- Independently confirmed via a direct `tx` RPC call (not just trusting the facilitator's word): `TransactionResult: tesSUCCESS`, `validated: true`, 5000 drops moved from the throwaway Relay Agent wallet to your address.
-- Full receipt: `last_receipt.json` in this folder.
-
-## Accounts used
-
-- **Merchant / vendor payTo** (`XRPL_PAY_TO`): `rwZTWDscjAfmyToDtmP7ZQk4sBG4HFWEPB` — your address from round 1. It received the 5000 drops.
-- **Relay Agent / payer**: `rENbfkn1B9Nx8DsBsvd5Pscc3yRXkuypEs` — a throwaway wallet generated and funded by me via the testnet faucet, specifically so I never needed your seed. Its seed lives only in the container this ran in, not in anything handed to you. Treat this wallet as disposable — regenerate it yourself if you keep working on this.
-
-## Files
-
-- `server.py` — merchant side. Protects `/income-verification` with `require_payment`. This stands in for "PayrollPing API," the vendor round 1's mock Policy Matrix filter selected.
-- `client.py` — Relay Agent side. Loads a wallet from `XRPL_BUYER_SEED`, uses `x402_requests` to handle the 402 → sign → settle → retry flow transparently.
-- `.env.server` / `.env.client` — config each side reads. `.env.client` has a seed in it — **do not commit this file or paste its contents anywhere.**
-- `last_receipt.json` — output of the run above.
-
-## Running it yourself
-
-```bash
-pip install fastapi uvicorn x402-xrpl python-dotenv requests xrpl-py
-
-# terminal 1
-cp .env.server .env
-python3 server.py
-
-# terminal 2 (separate shell, same folder)
-cp .env.client .env
-python3 client.py
+```sh
+sh start.sh
 ```
 
-If you swap in your own buyer wallet, generate a **fresh** one via the faucet
-UI rather than reusing anything from this conversation, and put the seed only
-in `.env.client` — never in a chat message.
+后端仅监听 `127.0.0.1:8000`，同时提供看板与业务 API。终端关闭或电脑重启后，需要重新启动服务。更多环境说明见 [本地配置指南](LOCAL_SETUP.md)。
 
-## One infra note for later
+## 查看演示文稿
 
-The public XRPL testnet RPC host from the official docs
-(`s.altnet.rippletest.net:51234`) was unreachable from this container —
-non-standard port, timed out. Used `https://testnet.xrpl-labs.com/` (port
-443, full rippled node) instead, which worked. If you deploy this somewhere
-with different egress rules, that substitution might not be necessary — or a
-different one might be, depending on what ports are open.
+- **[产品故事 v2](relay-business-deck-v2.html)**：产品本质、客户场景、交付结果、付费理由、商业模式及技术机制，共 10 页。
+- [原版演示稿](relay-business-deck.html)：保留的早期版本。
 
-## What this does NOT cover
+HTML 文件在 GitHub 中显示为源码。克隆后可用浏览器直接打开文件，或在仓库目录另开终端运行：
 
-- Screens 2/3 (still out of scope per round 1)
-- RLUSD pricing (still XRP — PRD's dollar figures aren't wired to a real FX rate anywhere in this skeleton)
-- Mainnet — this is `xrpl:1` (testnet) throughout; moving to mainnet needs a funded real wallet, the mainnet facilitator URL, and `network="xrpl:0"`
-- Audit log persistence — `last_receipt.json` is a one-off file, not wired into any ledger/DB
+```sh
+python3 -m http.server 8765 --bind 127.0.0.1
+```
+
+再打开 **[本地 v2 演示稿](http://127.0.0.1:8765/relay-business-deck-v2.html)**，使用左右方向键翻页。8765 是静态展示服务；运行采购流程仍需启动 8000 业务后端。上述 localhost 链接只指向访问者自己的电脑，不是公开部署地址。
+
+## 真实与模拟的边界
+
+| 环节 | 当前实现 |
+| --- | --- |
+| 供应商发现 | 实时读取两个已配置资源的未付款 402 声明；不是动态搜索整个 Bazaar 目录 |
+| 来源失联 | 每个资源可单独回退到 fixture，看板标为 fallback；仍可执行镜像采购 |
+| 策略 | 服务端执行价格、累计额度、类别、信任阈值和新鲜度字段检查；信任分及新鲜度字段含 Demo 假设 |
+| 支付 | 本地付款钱包向本地镜像的收款账户支付 XRP Testnet 测试币 |
+| 原始供应商 | 声明使用主网 `xrpl:0`；Demo 没有向它们付款 |
+| 数据交付 | 镜像返回保存的供应商样例，不是对当前申请人的实时核验 |
+| 凭证 | 真实交易哈希、独立链上确认和余额查询；审计追加到本地 JSONL |
+| 平台收费 | 仅计算演示账本，不向贷方真实收费 |
+
+一次已验证的采购支付了 **20,000 drops（0.02 XRP）**，并返回 `delivered / tesSUCCESS`：[测试网交易](https://testnet.xrpl.org/transactions/B92C9FC50F57E81F0814B46E55A9E59AE789DDABB73E2A8484C1D7EB8318C138)。这验证了付款与样例交付流程，不代表已验证真实数据质量或生产性能。
+
+供应商来源及镜像说明见 [MARKETPLACE_TESTNET.md](MARKETPLACE_TESTNET.md)。
+
+## 商业模式
+
+产品拟向贷款机构按完成的数据采购收费，支付供应商成本后保留采购服务收入。价值在于统一来源接入、采购规则与付款记录。
+
+演示文稿提出 **US$0.50/次、US$10 试用额度**，属于待验证的商业方案。当前 `billing.py` 仍采用**数据成本加 17.5% 平台费、标称 US$50 试用额度**：额度只覆盖数据成本，平台费照常记账；耗尽后自动转为按用量计费。
+
+运行账本使用固定换算假设，并非实时汇率。USD 收费、USDT 结算和货币兑换尚未实现；当前链上支付资产为 XRP Testnet。两套定价方案尚未统一，不应据此推导真实利润率。
+
+## API 示例
+
+后端启动后，可通过 API 发起与看板相同的采购：
+
+```sh
+curl -X POST http://127.0.0.1:8000/run \
+  -H 'Content-Type: application/json' \
+  -d '{"applicant_score":612,"data_type":"business_registration_status","applicant_region":"US","freshness_requirement_days":30}'
+
+curl http://127.0.0.1:8000/status
+```
+
+`POST /run` 异步返回运行 ID；`GET /status` 返回当前全局任务状态，不是按 ID 隔离的任务查询接口。
+
+| 接口 | 用途 |
+| --- | --- |
+| `GET /health` | 后端状态及测试网标识 |
+| `GET /marketplace/candidates` | 刷新两家供应商的未付款声明 |
+| `GET /policy.json` | 生效策略 |
+| `GET /billing` | 演示计费余额 |
+| `GET /audit` | 审计 JSON |
+| `GET /audit.csv` | 导出 CSV |
+
+`POST /run` 另接受 `scenario: "over_cap"`、`"blacklist"` 或 `"no_candidate"`，用于不付款的策略测试。前端尚未完整呈现这些终态，请通过 API 状态或审计查看结果。
+
+## 当前限制
+
+- 策略配置只读；可解释性筛选、按类别的新鲜度与实际数据时点核验尚未实现，region 只记录不筛选。
+- 无候选只产生状态与审计，没有可操作的人审队列；PDF 导出尚未实现。
+- 部分异常终态的前端处理、付款前报价一致性验证仍需完善。
+- 单全局运行状态；无多租户、认证或完整并发/幂等保护。
+- 计费和累计额度保存在内存，重启清零；JSONL 审计保留，但不具备防篡改保证。
+
+完整差异、优先级和验收标准见 [PRD v2.1](relay-prd-v2-gap-execution-plan.md)。[README_AUDIT.md](README_AUDIT.md) 是历史测试记录，其中部分完成状态已过时，以当前 PRD 的核对结果为准。
+
+## 常见问题
+
+| 现象 | 处理 |
+| --- | --- |
+| `failed to start run` 或 JSON/SyntaxError | 运行 `sh start.sh`，使用 8000 看板地址；修改代码后刷新旧页面 |
+| 找不到 `x402-xrpl` 安装版本 | 检查虚拟环境是否使用 Python 3.11+，不要使用系统 Python 3.9 |
+| 钱包缺失或未激活 | 在虚拟环境中运行 `setup_testnet.py`；已有 `.env` 时保留原配置，只为未激活钱包申请测试币 |
+| RPC 请求失败 | 检查外网连接及 `.env` 的 `XRPL_TESTNET_RPC_URL`；初始化脚本配置为 `https://s.altnet.rippletest.net:51234/` |
+| GitHub 仓库链接 404 | 在浏览器登录有仓库权限的 GitHub 账号；Git SSH 登录与浏览器登录互不替代 |
+
+## 代码结构
+
+| 文件 | 职责 |
+| --- | --- |
+| `orchestrator.py` | FastAPI 服务、镜像路由、采购流程、状态及审计 |
+| `marketplace.py` | 资源声明适配与 fallback 样例 |
+| `policy_filter.py` | 策略、筛选与测试夹具 |
+| `billing.py` | 试用额度与平台费账本 |
+| `relay-screen1-live.html` | 三个标签页的业务看板 |
+| `setup_testnet.py` / `start.sh` | 钱包配置与本地启动 |
+| `requirements.txt` | 已验证环境的依赖版本 |
