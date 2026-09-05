@@ -1,0 +1,1019 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Relay proxy platform for supplier selection and automated small purchases">
+  <title>Relay | Procurement Proxy Platform</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600&family=IBM+Plex+Sans:wght@400;500;600&family=Newsreader:opsz,wght@6..72,500;6..72,600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --paper: #EEF0E9;
+      --paper-deep: #E3E7DD;
+      --ink: #182234;
+      --ink-soft: #5D6570;
+      --rule: rgba(24, 34, 52, 0.23);
+      --rule-strong: rgba(24, 34, 52, 0.48);
+      --green: #2F6F4E;
+      --green-wash: rgba(47, 111, 78, 0.09);
+      --rust: #9C5330;
+      --rust-wash: rgba(156, 83, 48, 0.09);
+      --serif: "Newsreader", Georgia, serif;
+      --sans: "IBM Plex Sans", Arial, sans-serif;
+      --mono: "IBM Plex Mono", "SFMono-Regular", Consolas, monospace;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      overflow: hidden;
+      background: var(--paper);
+      color: var(--ink);
+    }
+
+    body {
+      font-family: var(--sans);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    a { color: inherit; }
+
+    .deck {
+      position: relative;
+      width: 100%;
+      height: 100dvh;
+      isolation: isolate;
+      background:
+        linear-gradient(90deg, transparent 0 6.3%, rgba(156, 83, 48, 0.10) 6.3% calc(6.3% + 1px), transparent calc(6.3% + 1px)),
+        repeating-linear-gradient(0deg, transparent 0 39px, rgba(24, 34, 52, 0.035) 39px 40px),
+        var(--paper);
+    }
+
+    .slide {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      gap: clamp(18px, 2.3vh, 28px);
+      padding: clamp(44px, 6.4vh, 76px) clamp(56px, 7.2vw, 118px) clamp(72px, 9.2vh, 98px);
+      opacity: 0;
+      visibility: hidden;
+      transform: translateX(28px);
+      transition: opacity 320ms ease, transform 420ms cubic-bezier(.22,.76,.34,1), visibility 0s linear 420ms;
+      pointer-events: none;
+    }
+
+    .slide.active {
+      opacity: 1;
+      visibility: visible;
+      transform: translateX(0);
+      transition-delay: 0s;
+      pointer-events: auto;
+      z-index: 2;
+    }
+
+    .slide.from-left { transform: translateX(-28px); }
+
+    .slide-head {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      align-items: start;
+      gap: 32px;
+      padding-bottom: clamp(12px, 1.5vh, 18px);
+      border-bottom: 1px solid var(--rule-strong);
+    }
+
+    .eyebrow,
+    .folio,
+    .source,
+    .small-note,
+    .status,
+    .enforcement,
+    .metric,
+    .data,
+    .step-index {
+      font-family: var(--mono);
+      font-variant-numeric: tabular-nums lining-nums;
+    }
+
+    .eyebrow {
+      margin: 0 0 9px;
+      color: var(--ink-soft);
+      font-size: clamp(11px, 0.88vw, 14px);
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    h1, h2, h3, p { margin-top: 0; }
+
+    h1, h2 {
+      margin-bottom: 0;
+      font-family: var(--serif);
+      font-weight: 600;
+      letter-spacing: -0.035em;
+      line-height: 0.98;
+    }
+
+    h1 { font-size: clamp(48px, 6.1vw, 92px); }
+    h2 { max-width: 1120px; font-size: clamp(36px, 4.15vw, 64px); }
+
+    h3 {
+      margin-bottom: 8px;
+      font-size: clamp(16px, 1.35vw, 22px);
+      line-height: 1.2;
+    }
+
+    p {
+      margin-bottom: 0;
+      font-size: clamp(16px, 1.48vw, 23px);
+      line-height: 1.48;
+    }
+
+    .folio {
+      padding-top: 6px;
+      color: var(--ink-soft);
+      font-size: clamp(11px, 0.88vw, 14px);
+      white-space: nowrap;
+    }
+
+    .slide-body {
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+
+    .slide-foot {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 28px;
+      min-height: 22px;
+      color: var(--ink-soft);
+    }
+
+    .source {
+      max-width: 1050px;
+      font-size: clamp(9.5px, 0.72vw, 11.5px);
+      line-height: 1.42;
+    }
+
+    .source a {
+      text-decoration-color: rgba(24, 34, 52, 0.4);
+      text-underline-offset: 2px;
+    }
+
+    .brand-mark {
+      font-family: var(--sans);
+      font-size: clamp(12px, 0.9vw, 15px);
+      font-weight: 600;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+
+    .brand-mark::before {
+      content: "";
+      display: inline-block;
+      width: 18px;
+      height: 7px;
+      margin-right: 8px;
+      border-top: 2px solid var(--green);
+      border-bottom: 2px solid var(--green);
+      vertical-align: 1px;
+    }
+
+    .mono { font-family: var(--mono); font-variant-numeric: tabular-nums lining-nums; }
+    .green { color: var(--green); }
+    .rust { color: var(--rust); }
+
+    /* Slide 1 */
+    .scenario {
+      min-height: 0;
+      display: grid;
+      grid-template-columns: minmax(280px, 0.72fr) minmax(540px, 1.28fr);
+      gap: clamp(28px, 4vw, 62px);
+      align-items: stretch;
+    }
+
+    .scenario-copy {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      padding: 12px 0;
+    }
+
+    .scenario-copy p {
+      max-width: 430px;
+      color: var(--ink-soft);
+      font-size: clamp(16px, 1.35vw, 21px);
+    }
+
+    .decision-block {
+      margin-top: clamp(24px, 3.5vh, 38px);
+      border-top: 2px solid var(--ink);
+    }
+
+    .decision-block .choice {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      align-items: baseline;
+      gap: 18px;
+      padding: 11px 0;
+      border-bottom: 1px solid var(--rule);
+      color: var(--ink-soft);
+      font-size: clamp(13px, 1.02vw, 16px);
+    }
+
+    .decision-block .mark {
+      color: var(--ink);
+      font-family: var(--mono);
+      font-size: clamp(10px, 0.8vw, 13px);
+      font-weight: 600;
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
+    }
+
+    .scenario-visual {
+      position: relative;
+      min-height: clamp(335px, 54vh, 500px);
+      overflow: hidden;
+      border: 1px solid var(--rule-strong);
+      background: #F2F2EC;
+    }
+
+    .scenario-visual img {
+      width: 100%;
+      height: 100%;
+      display: block;
+      object-fit: cover;
+      object-position: 58% center;
+      filter: saturate(0.9) contrast(1.02);
+    }
+
+    .scenario-visual::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      box-shadow: inset 0 0 70px rgba(238, 240, 233, 0.32);
+      pointer-events: none;
+    }
+
+    .data-question {
+      position: absolute;
+      z-index: 2;
+      max-width: 220px;
+      padding: 9px 12px;
+      border-left: 3px solid var(--green);
+      background: rgba(238, 240, 233, 0.93);
+      box-shadow: 0 7px 20px rgba(24, 34, 52, 0.08);
+      color: var(--ink);
+      font-size: clamp(12px, 0.96vw, 15px);
+      line-height: 1.28;
+    }
+
+    .data-question strong {
+      display: block;
+      margin-bottom: 4px;
+      font-family: var(--sans);
+      font-size: clamp(12px, 0.98vw, 15px);
+      line-height: 1.25;
+    }
+
+    .data-question .detail {
+      display: block;
+      color: var(--ink-soft);
+      font-size: clamp(10px, 0.78vw, 12px);
+      line-height: 1.28;
+    }
+
+    .data-question.country { top: 11%; left: 5%; }
+    .data-question.industry { top: 32%; left: 5%; }
+
+    .question-mark {
+      position: absolute;
+      z-index: 2;
+      color: rgba(24, 34, 52, 0.48);
+      font-family: var(--serif);
+      font-size: clamp(50px, 5.2vw, 82px);
+      font-weight: 600;
+      line-height: 1;
+      text-shadow: 0 2px 0 rgba(238, 240, 233, 0.7);
+    }
+
+    .question-mark.one { top: 6%; right: 7%; transform: rotate(8deg); }
+    .question-mark.two { top: 53%; left: 7%; transform: rotate(-9deg); color: rgba(47, 111, 78, 0.55); }
+    .question-mark.three { bottom: 5%; right: 4%; transform: rotate(5deg); font-size: clamp(36px, 4vw, 62px); }
+
+    /* Slide 2 */
+    .price-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 0.83fr) minmax(0, 1.17fr);
+      gap: clamp(38px, 6vw, 92px);
+      align-items: stretch;
+    }
+
+    .evidence-ledger {
+      border-top: 2px solid var(--ink);
+      border-bottom: 1px solid var(--rule-strong);
+    }
+
+    .evidence-row {
+      display: grid;
+      grid-template-columns: minmax(180px, 1fr) auto;
+      gap: 24px;
+      align-items: baseline;
+      padding: clamp(13px, 1.7vh, 20px) 0;
+      border-top: 1px solid var(--rule);
+    }
+
+    .evidence-row:first-child { border-top: 0; }
+    .evidence-row .desc { color: var(--ink-soft); font-size: clamp(14px, 1.15vw, 18px); line-height: 1.38; }
+    .evidence-row .desc strong { color: var(--ink); font-family: var(--sans); }
+
+    .metric {
+      color: var(--green);
+      font-size: clamp(20px, 2vw, 31px);
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    .metric.compact { font-size: clamp(15px, 1.35vw, 21px); }
+
+    .analogue-label {
+      display: inline-block;
+      margin-bottom: 6px;
+      color: var(--ink-soft);
+      font-family: var(--sans);
+      font-size: clamp(10px, 0.8vw, 12px);
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    .qualification {
+      display: inline-block;
+      margin-top: 4px;
+      color: var(--ink-soft);
+      font-size: clamp(10px, 0.8vw, 12px);
+      font-weight: 600;
+      letter-spacing: 0.045em;
+      text-transform: uppercase;
+    }
+
+    .worked-math {
+      display: grid;
+      grid-template-rows: auto auto;
+      gap: 14px;
+      padding: clamp(20px, 2.4vw, 34px);
+      background: rgba(255,255,255,0.18);
+      border: 1px solid var(--rule-strong);
+    }
+
+    .worked-math h3 { font-family: var(--serif); font-size: clamp(22px, 2vw, 31px); font-weight: 600; }
+
+    .market-reasons {
+      display: grid;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .market-reason {
+      padding-top: 8px;
+      border-top: 1px solid var(--rule);
+      color: var(--ink-soft);
+      font-size: clamp(12px, 0.94vw, 15px);
+      line-height: 1.32;
+    }
+
+    .market-reason:first-child { padding-top: 0; border-top: 0; }
+    .market-reason strong { color: var(--ink); font-family: var(--sans); }
+
+    .math-caption {
+      margin: 0 0 5px;
+      color: var(--ink-soft);
+      font-size: clamp(10px, 0.78vw, 12px);
+      font-weight: 600;
+      line-height: 1.3;
+      text-transform: uppercase;
+    }
+
+    .equation {
+      margin-top: 6px;
+      color: var(--ink-soft);
+      font-size: clamp(13px, 1.08vw, 17px);
+      line-height: 1.5;
+    }
+
+    .bar-chart {
+      display: grid;
+      align-content: center;
+      gap: 12px;
+    }
+
+    .bar-row {
+      display: grid;
+      grid-template-columns: minmax(138px, 0.9fr) minmax(230px, 2fr) auto;
+      gap: 14px;
+      align-items: center;
+    }
+
+    .bar-label { color: var(--ink-soft); font-size: clamp(13px, 1vw, 16px); }
+    .bar-track { height: clamp(24px, 3.1vh, 34px); border-left: 1px solid var(--ink); background: rgba(24,34,52,0.05); }
+    .bar { height: 100%; background: var(--ink); }
+    .bar.sticker { width: 12%; }
+    .bar.effective { width: 100%; background: var(--green); }
+    .bar-value { min-width: 88px; text-align: right; font-family: var(--mono); font-size: clamp(14px, 1.18vw, 18px); font-weight: 600; }
+    .multiple { margin-top: 4px; text-align: right; color: var(--green); font-family: var(--serif); font-size: clamp(22px, 2.25vw, 34px); }
+
+    /* Slide 3 */
+    .cost-stack {
+      max-width: 1150px;
+      border-top: 2px solid var(--ink);
+    }
+
+    .cost-line {
+      display: grid;
+      grid-template-columns: minmax(245px, 0.66fr) minmax(0, 1.34fr);
+      gap: clamp(28px, 4vw, 64px);
+      padding: clamp(17px, 2.1vh, 25px) 0;
+      border-bottom: 1px solid var(--rule);
+    }
+
+    .cost-line h3 { font-family: var(--serif); font-size: clamp(22px, 1.9vw, 30px); }
+    .cost-line p { color: var(--ink-soft); font-size: clamp(15px, 1.3vw, 20px); }
+    .clarifier { margin-top: clamp(22px, 3vh, 34px); padding-left: 18px; border-left: 3px solid var(--green); color: var(--ink); font-size: clamp(14px, 1.18vw, 18px); }
+
+    /* Slide 4 */
+    .shopping-view {
+      display: grid;
+      grid-template-rows: auto auto;
+      gap: clamp(22px, 3.2vh, 36px);
+    }
+
+    .sample-label {
+      color: var(--rust);
+      font-size: clamp(11px, 0.85vw, 13px);
+      font-weight: 600;
+      letter-spacing: 0.045em;
+      text-transform: uppercase;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      table-layout: fixed;
+    }
+
+    th {
+      padding: 0 16px 10px;
+      border-bottom: 2px solid var(--ink);
+      color: var(--ink-soft);
+      font-size: clamp(11px, 0.87vw, 13px);
+      font-weight: 500;
+      letter-spacing: 0.05em;
+      text-align: left;
+      text-transform: uppercase;
+    }
+
+    td {
+      padding: clamp(12px, 1.7vh, 18px) 16px;
+      border-bottom: 1px solid var(--rule);
+      font-size: clamp(15px, 1.28vw, 20px);
+      vertical-align: middle;
+    }
+
+    td:first-child, th:first-child { padding-left: 0; }
+    td:last-child, th:last-child { padding-right: 0; text-align: right; }
+    td.data { font-size: clamp(14px, 1.15vw, 18px); }
+    tr.selected { background: var(--green-wash); }
+    tr.excluded { background: var(--rust-wash); }
+    .status { font-size: clamp(11px, 0.95vw, 14px); font-weight: 600; text-transform: uppercase; }
+    .status.selected { color: var(--green); }
+    .status.review { color: var(--ink); }
+    .status.excluded { color: var(--rust); }
+
+    .flowline {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      border-top: 1px solid var(--rule-strong);
+      border-bottom: 1px solid var(--rule-strong);
+    }
+
+    .flowstep {
+      position: relative;
+      padding: clamp(14px, 1.8vh, 20px) 20px clamp(14px, 1.8vh, 20px) 0;
+      font-size: clamp(14px, 1.18vw, 18px);
+    }
+
+    .flowstep:not(:last-child)::after {
+      content: "";
+      position: absolute;
+      top: 50%;
+      right: 18px;
+      width: 34px;
+      border-top: 1px solid var(--rule-strong);
+    }
+
+    .flowstep .step-index { display: block; margin-bottom: 3px; color: var(--ink-soft); font-size: clamp(10px, 0.78vw, 12px); }
+    .flowstep:last-child { color: var(--green); }
+
+    /* Slide 5 */
+    .policy-intro { display: flex; align-items: baseline; justify-content: space-between; gap: 28px; margin-bottom: 18px; }
+    .policy-intro p { max-width: 670px; color: var(--ink-soft); font-size: clamp(14px, 1.15vw, 18px); }
+    .policy-table th:nth-child(1) { width: 28%; }
+    .policy-table th:nth-child(2) { width: 47%; }
+    .policy-table th:nth-child(3) { width: 25%; }
+    .enforcement { display: inline-block; padding: 5px 8px; border: 1px solid var(--rule-strong); font-size: clamp(10px, 0.83vw, 13px); font-weight: 600; text-transform: uppercase; }
+    .enforcement.stop { color: var(--rust); border-color: var(--rust); background: var(--rust-wash); }
+
+    /* Slide 6 */
+    .model-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.1fr) minmax(260px, 0.9fr);
+      gap: clamp(48px, 7vw, 110px);
+      align-items: center;
+    }
+
+    .pricing-ledger { border-top: 2px solid var(--ink); }
+    .pricing-row { display: grid; grid-template-columns: 1.1fr 1fr; gap: 28px; padding: clamp(15px, 2vh, 23px) 0; border-bottom: 1px solid var(--rule); }
+    .pricing-row .name { font-family: var(--serif); font-size: clamp(20px, 1.7vw, 27px); }
+    .pricing-row .value { font-size: clamp(15px, 1.25vw, 19px); line-height: 1.45; }
+    .pricing-row .value.mono { font-size: clamp(14px, 1.18vw, 18px); }
+    .fx-pricing .pricing-row { padding: clamp(9px, 1.15vh, 13px) 0; }
+    .fx-pricing .pricing-row .value { font-size: clamp(14px, 1.08vw, 17px); line-height: 1.34; }
+
+    .trial-block { padding: clamp(26px, 3.2vw, 44px); border: 1px solid var(--green); background: var(--green-wash); }
+    .trial-block .metric { display: block; margin: 8px 0 16px; font-size: clamp(48px, 5vw, 78px); }
+    .trial-block p { color: var(--ink-soft); font-size: clamp(15px, 1.25vw, 19px); }
+    .revenue-block { padding: clamp(20px, 2.4vw, 32px); }
+    .revenue-block .metric { font-size: clamp(40px, 4.2vw, 64px); }
+    .fee-note { display: grid; gap: 7px; margin-top: 12px; padding-top: 11px; border-top: 1px solid rgba(47,111,78,0.35); color: var(--ink-soft); font-size: clamp(12px, 0.94vw, 14px); line-height: 1.35; }
+    .fee-note strong { color: var(--ink); }
+
+    /* Slide 7 */
+    .mapping-table th:nth-child(1) { width: 9%; }
+    .mapping-table th:nth-child(2) { width: 30%; }
+    .mapping-table th:nth-child(3) { width: 61%; }
+    .mapping-table td { padding-top: clamp(8px, 1.05vh, 12px); padding-bottom: clamp(8px, 1.05vh, 12px); font-size: clamp(12.5px, 1.02vw, 16px); line-height: 1.32; }
+    .mapping-table td:first-child { color: var(--green); font-family: var(--mono); font-weight: 600; }
+    .mapping-table td:nth-child(2) { font-weight: 600; }
+    .closing-line { margin-top: clamp(18px, 2.2vh, 26px); text-align: right; font-family: var(--serif); font-size: clamp(20px, 1.9vw, 30px); }
+
+    .quote-table th:first-child { width: 40%; }
+    .quote-table .small-note { font-size: 14px; color: var(--ink-soft); }
+    .swimlane { width: 100%; max-height: 42vh; overflow: visible; font-family: var(--sans); font-size: 16px; }
+    .swimlane .lane-name { font-weight: 600; font-size: 18px; }
+    .integration { margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--rule-strong); }
+    .integration-head { display: flex; gap: 20px; align-items: baseline; margin-bottom: 10px; }
+    .integration-head span { font-size: 12px; color: var(--ink-soft); }
+    .integration code { display: block; padding: 12px; background: var(--green-wash); font-family: var(--mono); font-size: clamp(10px, 1vw, 14px); overflow-wrap: anywhere; }
+    .integration p { margin-top: 10px; font-size: 14px; color: var(--ink-soft); }
+    /* Navigation */
+    .progress-track {
+      position: fixed;
+      z-index: 20;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 4px;
+      background: rgba(24, 34, 52, 0.10);
+    }
+
+    .progress-bar {
+      width: 14.2857%;
+      height: 100%;
+      background: var(--green);
+      transition: width 320ms ease;
+    }
+
+    .nav {
+      position: fixed;
+      z-index: 20;
+      left: 50%;
+      bottom: clamp(18px, 2.6vh, 28px);
+      display: flex;
+      align-items: center;
+      gap: 18px;
+      transform: translateX(-50%);
+    }
+
+    .nav-button {
+      width: 38px;
+      height: 38px;
+      display: grid;
+      place-items: center;
+      border: 1px solid var(--rule-strong);
+      border-radius: 50%;
+      background: rgba(238, 240, 233, 0.88);
+      color: var(--ink);
+      cursor: pointer;
+      font: 500 20px/1 var(--sans);
+      transition: color 160ms ease, border-color 160ms ease, background 160ms ease;
+    }
+
+    .nav-button:hover, .nav-button:focus-visible { border-color: var(--green); color: var(--green); outline: none; }
+    .nav-button:disabled { opacity: 0.28; cursor: default; }
+
+    .dots { display: flex; gap: 8px; }
+    .dot { width: 9px; height: 9px; padding: 0; border: 1px solid var(--ink-soft); border-radius: 50%; background: transparent; cursor: pointer; }
+    .dot.active { border-color: var(--green); background: var(--green); }
+    .dot:focus-visible { outline: 2px solid var(--green); outline-offset: 3px; }
+
+    @media (max-width: 860px), (max-height: 670px) {
+      .slide { padding-left: 7vw; padding-right: 6vw; }
+      .scenario { grid-template-columns: 0.7fr 1.3fr; gap: 24px; }
+      .scenario-copy { padding: 0; }
+      .decision-block .choice { padding: 8px 0; }
+      .scenario-visual { min-height: 320px; }
+      .price-grid, .model-grid { grid-template-columns: 1fr; gap: 24px; }
+      .worked-math { padding: 18px 22px; }
+      .cost-line { grid-template-columns: 0.7fr 1.3fr; }
+      .source { max-width: 80vw; }
+      .trial-block { display: none; }
+    }
+
+    @media (max-width: 640px) {
+      h1 { font-size: clamp(42px, 13vw, 66px); }
+      h2 { font-size: clamp(32px, 9vw, 48px); }
+      .slide { padding-top: 48px; padding-bottom: 74px; }
+      .slide-head { gap: 12px; }
+      .price-grid { display: block; }
+      .worked-math { margin-top: 20px; }
+      .evidence-row { grid-template-columns: 1fr; gap: 4px; }
+      .metric { justify-self: start; }
+      .bar-row { grid-template-columns: 105px 1fr auto; }
+      .cost-line { grid-template-columns: 1fr; gap: 4px; }
+      .flowline { grid-template-columns: repeat(5, minmax(90px, 1fr)); overflow-x: auto; }
+      .flowstep:not(:last-child)::after { display: none; }
+      th, td { padding-left: 8px; padding-right: 8px; }
+      .source { font-size: 9px; }
+      .brand-mark { display: none; }
+      .scenario { grid-template-columns: 1fr; overflow-y: auto; }
+      .scenario-copy { justify-content: flex-start; }
+      .decision-block { display: none; }
+      .scenario-visual { min-height: 300px; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        scroll-behavior: auto !important;
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+      }
+      .slide, .slide.from-left { transform: none; }
+    }
+
+/* Version 2: product and customer story */
+.slide,.slide.active,.slide.from-left {transition:none;transform:none}
+.story-table td {font-size:inherit;line-height:1.5}
+.story {display:flex;flex-direction:column;justify-content:center;gap:28px;height:100%;min-height:0}
+.story p {margin:0;font-size:clamp(20px,2.1vw,30px);line-height:1.4;max-width:1050px}
+.story .lead {font-family:var(--serif);font-size:clamp(34px,4vw,58px);line-height:1.13;max-width:1000px}
+.story strong {color:var(--green)}
+.story .muted {font-size:clamp(17px,1.5vw,22px);color:var(--ink-soft)}
+.story-split {display:grid;grid-template-columns:1.15fr 1fr;gap:60px;align-items:center;height:100%}
+.story-split img {width:100%;max-height:440px;object-fit:cover;border:1px solid var(--rule)}
+.story-list {display:flex;flex-direction:column;gap:0}
+.story-list div {display:grid;grid-template-columns:180px 1fr;gap:25px;padding:22px 0;border-bottom:1px solid var(--rule);font-size:clamp(19px,1.9vw,27px);line-height:1.35}
+.story-list b {font-size:16px;text-transform:uppercase;letter-spacing:.08em;color:var(--green);padding-top:6px}
+.story-table {width:100%;border-collapse:collapse;font-size:clamp(18px,1.8vw,25px)}
+.story-table td,.story-table th {padding:20px 15px;vertical-align:top;text-align:left;border-bottom:1px solid var(--rule)}
+.story-table th {font-size:16px;text-transform:uppercase;color:var(--ink-soft)}
+.statement {border-left:4px solid var(--green);padding-left:28px}
+.price-line {font-family:var(--serif);font-size:clamp(50px,6vw,88px);color:var(--green)}
+.story .small {font-size:18px;color:var(--ink-soft)}
+.slide-body {min-height:0}
+.source {max-width:1100px}
+@media(max-width:800px){.story-split{grid-template-columns:1fr;gap:20px}.story-split img{max-height:200px}.story{gap:18px}.story-list div{grid-template-columns:110px 1fr;gap:12px;padding:14px 0}.slide-body{overflow:auto}.story-table td,.story-table th{padding:12px 8px}.story p{font-size:20px}}
+@media print{html,body{height:auto;overflow:visible}.deck{height:auto}.slide,.slide.active{position:relative;visibility:visible;opacity:1;transform:none;height:100vh;break-after:page;pointer-events:auto}.nav,.progress-track{display:none}}
+
+
+.mechanism-slide h1 {font-size:clamp(38px,4.6vw,68px)}
+.mechanism-slide .slide-body {gap:28px}
+.money-flow {display:grid;grid-template-columns:1fr 35px 1.2fr 35px 1fr;gap:18px;align-items:center;padding:24px 0;border-top:2px solid var(--ink);border-bottom:1px solid var(--rule)}
+.money-flow h3 {font-size:24px;color:var(--green)}
+.money-flow p,.economics p,.infra-step p,.chain-proof p {font-size:18px;line-height:1.45;color:var(--ink-soft)}
+.money-arrow {font-size:32px;color:var(--green)}
+.economics {display:grid;grid-template-columns:1fr 1fr;gap:65px}
+.economics-row {display:flex;justify-content:space-between;gap:20px;padding:12px 0;border-bottom:1px solid var(--rule);font-size:21px}
+.economics-row b {font-family:var(--mono)}
+.economics-row.spread {color:var(--green)}
+.economics p {margin-top:14px}
+.settlement-copy h3 {font-size:26px;color:var(--green)}
+.infra-intro {font-size:23px;line-height:1.4;max-width:1050px}
+.infra-intro strong {color:var(--green)}
+.infra-flow {display:grid;grid-template-columns:repeat(4,1fr);border-top:2px solid var(--ink);border-bottom:1px solid var(--rule)}
+.infra-step {padding:22px 20px;border-right:1px solid var(--rule)}
+.infra-step:first-child {padding-left:0}.infra-step:last-child{border-right:0}
+.infra-step .step-index {display:block;font-size:12px;color:var(--green);margin-bottom:12px}
+.infra-step h3 {font-size:21px}
+.chain-proof {display:grid;grid-template-columns:1.1fr 1fr;gap:45px;align-items:center;padding:22px;background:var(--green-wash);border-left:3px solid var(--green)}
+.wallet-transfer {display:flex;gap:15px;align-items:center;font-size:18px;margin:12px 0}
+.proof-link {font-size:16px;color:var(--green);text-underline-offset:3px}
+@media(max-width:800px){.money-flow{gap:8px;grid-template-columns:1fr}.money-arrow{transform:rotate(90deg);justify-self:center}.economics,.chain-proof{grid-template-columns:1fr;gap:20px}.infra-flow{grid-template-columns:1fr 1fr}.mechanism-slide .slide-body{justify-content:flex-start;overflow-y:auto}.money-flow h3{font-size:22px}}
+
+.business-loop-slide h1 {font-size:clamp(36px,4.6vw,68px)}
+.business-loop-slide .slide-body {gap:14px}
+.loop-intro {font-size:clamp(20px,2vw,29px);line-height:1.4}
+.loop-intro strong {color:var(--green)}
+.business-loop {display:block;width:100%;max-height:36vh;min-height:200px;font-family:var(--sans);color:var(--ink)}
+.loop-actor {font-family:var(--serif);font-size:34px;font-weight:600;fill:var(--ink)}
+.loop-detail {font-size:22px;fill:var(--ink-soft)}
+.loop-label {font-size:19px;fill:var(--green)}
+.loop-repeat {font-size:21px;fill:var(--ink-soft)}
+.loop-takeaways {display:grid;grid-template-columns:1fr 1fr;gap:40px;border-top:1px solid var(--rule-strong);padding-top:18px}
+.loop-takeaways p {font-size:clamp(17px,1.7vw,24px);line-height:1.4}.loop-takeaways strong{color:var(--green);font-weight:500}
+@media(max-width:800px){.business-loop-slide .slide-body{overflow:auto;justify-content:flex-start}.business-loop{min-width:680px;min-height:210px}.loop-takeaways{grid-template-columns:1fr;gap:16px}}
+
+.cover-split {display:grid;grid-template-columns:1.3fr 1fr;gap:40px;align-items:center;height:100%;min-height:0}
+.cover-split .story {gap:24px;height:auto}
+.cover-split .story .lead {font-size:clamp(30px,3.4vw,49px);line-height:1.16}
+.cover-split .story p {font-size:clamp(19px,1.85vw,27px)}
+.cover-split .story .muted {font-size:clamp(17px,1.45vw,21px)}
+.cover-loop {margin:0;width:100%;max-width:440px;justify-self:end}
+.cover-loop svg {display:block;width:100%;max-height:43vh;overflow:visible}
+.cover-actor {font-family:var(--serif);font-size:31px;font-weight:600;fill:var(--ink)}
+.cover-actor.cover-relay {fill:var(--green)}
+.cover-detail {font-family:var(--sans);font-size:17px;fill:var(--ink-soft)}
+.cover-loop figcaption {text-align:center;font-size:15px;line-height:1.5;color:var(--ink-soft);margin-top:8px}
+@media(max-width:700px){.cover-split{grid-template-columns:1fr;height:auto;gap:20px}.cover-loop{max-width:310px;justify-self:center}.cover-loop svg{max-height:300px}}
+
+.cli-slide h1 {font-size:clamp(38px,4.6vw,68px)}
+.cli-slide .story {gap:18px}
+.cli-slide .story-list div {padding:12px 0;font-size:clamp(18px,1.65vw,24px)}
+.cli-example {border-left:3px solid var(--green);background:var(--green-wash);padding:18px 20px}
+.cli-heading {display:flex;align-items:baseline;gap:20px;margin-bottom:12px;font-size:19px}
+.cli-heading span {font-size:13px;color:var(--ink-soft)}
+.cli-example pre {margin:0 0 12px;white-space:pre-wrap;overflow-wrap:anywhere;font-family:var(--mono);font-size:clamp(12px,1.15vw,16px);line-height:1.6;user-select:text}
+.cli-slide .story .cli-result {font-size:16px;line-height:1.5;margin-bottom:8px}
+.cli-slide .story .cli-prereq {font-size:13px;color:var(--ink-soft);line-height:1.5}
+.cli-slide .story .cli-stop {font-size:17px}
+.cli-example code {font-family:var(--mono)}
+
+.request-slide .slide-body {gap:20px}
+.request-columns {display:grid;grid-template-columns:1fr 1.15fr;gap:40px;align-items:start}
+.request-context h3 {font-size:24px;line-height:1.25;color:var(--green)}
+.request-context p {font-size:18px;line-height:1.45;margin-bottom:14px}
+.request-context .eyebrow {font-size:12px;margin-bottom:8px}
+.request-context .request-note {font-size:14px;color:var(--ink-soft)}
+.request-context .request-context-label {margin-top:20px}
+.request-slide .cli-example pre {font-size:clamp(11px,1.15vw,16px);line-height:1.5}
+.request-slide .cli-result {font-size:15px;line-height:1.5;margin-bottom:10px}
+.request-slide .cli-prereq {font-size:12px;line-height:1.5;color:var(--ink-soft)}
+.request-boundary {font-size:16px;line-height:1.45;border-top:1px solid var(--rule);padding-top:16px;color:var(--ink-soft)}
+@media(max-width:800px){.request-columns{grid-template-columns:1fr}.request-slide .slide-body{justify-content:flex-start;overflow:auto}}
+
+[aria-labelledby="story-5"] h1 {font-size:clamp(36px,4.6vw,68px)}
+
+.assumptions-slide h1 {font-size:clamp(34px,4.1vw,60px)}
+.assumptions-slide .slide-body {gap:14px;justify-content:flex-start}
+.assumptions-intro {font-size:clamp(17px,1.6vw,23px);line-height:1.4;color:var(--ink-soft)}
+.assumptions-table th:nth-child(1) {width:25%}.assumptions-table th:nth-child(2){width:44%}.assumptions-table th:nth-child(3){width:31%}
+.assumptions-table th,.assumptions-table td {text-align:left;vertical-align:top}
+.assumptions-table td {font-size:clamp(14px,1.4vw,20px);line-height:1.35;padding-top:12px;padding-bottom:12px}
+.assumptions-table td strong {font-weight:500;color:var(--green)}
+.assumptions-table th {font-size:12px}
+.assumptions-limit {font-size:clamp(14px,1.25vw,18px);line-height:1.4;padding-left:16px;border-left:3px solid var(--green);color:var(--ink-soft)}
+@media(max-height:750px){.assumptions-slide .slide-body{overflow:auto;justify-content:flex-start}.assumptions-table td{padding-top:8px;padding-bottom:8px}}
+
+.operating-copy p {font-size:16px;line-height:1.4;margin-top:12px}.operating-copy .cost-formula{color:var(--green);border-top:1px solid var(--rule);padding-top:12px}.operating-copy .trial-small{font-size:13px}
+.assumptions-table td {font-size:clamp(13px,1.27vw,18px);padding-top:10px;padding-bottom:10px}
+.assumptions-slide h1 {font-size:clamp(32px,3.9vw,56px)}
+
+/* Platform story: preserve the established layout and compact cover loop. */
+.slide h1 {font-size:clamp(34px,4.2vw,62px)}
+.business-loop-slide h1 {font-size:clamp(34px,4.3vw,64px)}
+.cover-split .story .lead {font-size:clamp(28px,3.1vw,45px)}
+.cover-split .story p {font-size:clamp(18px,1.7vw,25px)}
+
+.request-slide .slide-body {justify-content:flex-start}
+.request-context p {font-size:16px;line-height:1.4;margin-bottom:12px}
+.request-context h3 {font-size:22px}
+.infra-step p,.chain-proof p {font-size:16px;line-height:1.4}
+.infra-step h3 {font-size:18px}
+.infra-intro {font-size:20px;line-height:1.4}
+.wallet-transfer {font-size:16px;gap:10px}
+
+.pitch-slide .story {gap:26px}
+.pitch-slide .lead {font-size:clamp(34px,3.7vw,54px)}
+.pitch-benefits {display:grid;grid-template-columns:1fr 1.2fr;gap:70px;align-items:start}
+.pitch-benefits .eyebrow {font-size:13px;margin-bottom:20px}
+.pitch-benefits .economics-row {font-size:clamp(18px,1.6vw,24px)}
+.pitch-chain td {font-size:clamp(17px,1.65vw,24px);padding:16px 12px}
+.pitch-links {display:flex;gap:40px;font-size:20px!important}
+.appendix-jump {position:fixed;bottom:22px;left:7.2vw;z-index:10;background:var(--paper);border:0;color:var(--green);font:14px var(--sans);cursor:pointer;padding:8px 0}
+.dot.appendix-dot {opacity:.45}
+.dot.appendix-dot.active {opacity:1}
+@media(max-width:800px){.pitch-benefits{grid-template-columns:1fr;gap:20px}.pitch-links{gap:18px}.appendix-jump{bottom:8px}}
+@media print{.appendix-jump{display:none}}
+
+
+.validation-table th:first-child {width:28%}
+.validation-table td {font-size:clamp(16px,1.5vw,22px);line-height:1.35;padding:16px 12px}
+.validation-table strong {color:var(--green)}
+
+.pitch-number {font-family:var(--serif);font-size:clamp(30px,3.4vw,50px);line-height:1.15;color:var(--green);margin:8px 0 12px}
+.pitch-cost-table td {font-size:clamp(18px,1.7vw,24px);padding:16px 12px}
+.pitch-cost-table strong {color:var(--green)}
+
+.added-flow .slide-body{gap:18px;overflow-y:auto;justify-content:flex-start}
+.added-flow h3{font-size:22px;color:var(--green)}
+.added-flow p,.added-flow li{font-size:18px;line-height:1.4}
+.flow-banner{padding:15px 20px;background:var(--green-wash);border-left:3px solid var(--green);font-size:20px}
+.route-columns{display:grid;grid-template-columns:1fr 1fr;gap:40px}
+.route-columns>div{border-top:1px solid var(--rule-strong);padding:18px 0 0}
+.route-columns ol{padding-left:24px;margin-bottom:0}.route-columns li{padding:4px 0}
+.flow-result{font-weight:500}.added-flow .flow-note{font-size:16px;color:var(--ink-soft);margin:0}
+.payment-rails{display:grid;grid-template-columns:repeat(3,1fr);gap:28px;border-bottom:1px solid var(--rule);padding-bottom:18px}
+.payment-rails p{font-size:16px}.wallet-stage{padding:5px 0 12px;border-bottom:1px solid var(--rule-strong)}
+.wallet-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:25px}.wallet-grid .step-index{font-size:12px;color:var(--green)}
+.wallet-grid h3{margin-top:12px}.wallet-grid p{font-size:17px}
+@media(max-width:800px){.route-columns,.payment-rails,.wallet-grid{grid-template-columns:1fr;gap:20px}.added-flow .infra-flow{grid-template-columns:1fr}.added-flow .slide-body{overflow:auto}.flow-banner{font-size:18px}}
+@media print{.added-flow .slide-body{overflow:visible}}
+
+.query-economics .slide-body{gap:18px;justify-content:flex-start;overflow-y:auto}
+.query-payment-flow{display:grid;grid-template-columns:1fr 1fr 1fr;gap:28px;border-bottom:1px solid var(--rule);padding-bottom:16px}
+.query-payment-flow h3{font-size:21px;color:var(--green);margin-bottom:8px}
+.query-payment-flow p:not(.eyebrow){font-size:16px;line-height:1.4}
+.query-economics .story-table th{font-size:13px;padding:8px 10px;line-height:1.3}
+.query-economics .story-table td{font-size:20px;padding:10px;line-height:1.3}
+.query-stress{background:var(--green-wash);color:var(--green)}
+.query-cost-notes{display:grid;grid-template-columns:1.15fr 1fr;gap:32px}
+.query-cost-notes p{font-size:16px;line-height:1.4}
+.query-economics .source{font-size:10px;line-height:1.4}
+@media(max-width:800px){.query-payment-flow,.query-cost-notes{grid-template-columns:1fr;gap:16px}.query-economics .story-table td{font-size:16px}}
+@media print{.query-economics .slide-body{overflow:visible}}
+</style>
+</head>
+<body>
+  <main class="deck" aria-label="Relay business demo deck">
+    <section class="slide pitch-slide active" aria-labelledby="pitch-1"><header class="slide-head"><div><p class="eyebrow">Relay / Pain point</p><h1 id="pitch-1">Small data purchases, too much work</h1></div><div class="folio">01 / 08</div></header><div class="slide-body"><div class="story"><p class="lead">“My existing data source has a gap.<br><strong>Why does filling it take so much work?”</strong></p><div class="story-list"><div><b>Finding the fit</b><span>Find a source for the missing information, within policy and budget.</span></div><div><b>Making the purchase</b><span>Another supplier can mean another integration and payment workflow.</span></div></div><p class="muted">First scenario: an underwriter needs extra context for an individual’s application.</p></div></div><footer class="slide-foot"><div class="source">Customer hypothesis: recurring data purchases create repeated procurement work. Customer savings remain to be measured.</div><div class="brand-mark">Relay</div></footer></section>
+
+<section class="slide pitch-slide " aria-labelledby="pitch-2"><header class="slide-head"><div><p class="eyebrow">Relay / Solution / Proxy</p><h1 id="pitch-2">One integration for automated procurement</h1></div><div class="folio">02 / 08</div></header><div class="slide-body"><div class="cover-split"><div class="story"><p class="lead">Your app requests data.<br><strong>Relay retrieves or buys.</strong></p><p>Use authorized personal data where available.<br>Buy additional context from eligible suppliers.<br>Return data with access and payment evidence.</p><p class="muted">One integration. Institution-linked payment.<br>Collection and supplier settlement behind Relay.</p></div><figure class="cover-loop"><svg viewBox="0 0 440 430" role="img" aria-labelledby="pitch-cover-loop-title pitch-cover-loop-desc"><title id="pitch-cover-loop-title">The Relay business loop</title><desc id="pitch-cover-loop-desc">Clockwise: the customer requests and pays, Relay sources and buys, the supplier returns data, and the customer receives the result and a receipt.</desc><defs><marker id="pitch-cover-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#2F6F4E"/></marker></defs><g fill="none" stroke="#2F6F4E" stroke-width="2" marker-end="url(#pitch-cover-arrow)"><path d="M207 74 C292 67 350 105 360 156"/><path d="M358 235 C345 305 296 342 235 347"/><path d="M103 308 C45 270 42 180 83 137"/></g><g font-family="IBM Plex Sans, Arial, sans-serif" fill="#5D6570" font-size="17"><text x="278" y="64" text-anchor="middle">Request + pay</text><text x="425" y="288" text-anchor="end">Purchase</text><text x="145" y="205" text-anchor="middle">Result</text><text x="145" y="228" text-anchor="middle">+ receipt</text><text x="145" y="251" text-anchor="middle">via Relay</text></g><g text-anchor="middle"><text x="130" y="91" class="cover-actor">Customer</text><text x="130" y="118" class="cover-detail">App or agent</text><text x="347" y="191" class="cover-actor cover-relay">Relay</text><text x="347" y="218" class="cover-detail">Sources &amp; pays</text><text x="160" y="349" class="cover-actor">Supplier</text><text x="160" y="376" class="cover-detail">Delivers the resource</text></g></svg><figcaption>Relay earns a service spread<br>on each completed purchase.</figcaption></figure></div></div><footer class="slide-foot"><div class="source">Platform design. Today: limited category / policy selection and XRP Testnet purchase. Richer matching and fiat billing remain planned.</div><div class="brand-mark">Relay</div></footer></section>
+
+<section class="slide pitch-slide added-flow" aria-labelledby="data-access"><header class="slide-head"><div><p class="eyebrow">Relay / Proposed workflow</p><h1 id="data-access">One query, two data access paths</h1></div><div class="folio">03 / 08</div></header><div class="slide-body"><div class="flow-banner">Institution A site → Relay identifies the missing fields and the permitted source</div><div class="route-columns"><div><p class="eyebrow">01 / Marketplace data</p><h3>Source and purchase</h3><p>Industry benchmarks or other licensed context.</p><ol><li>Match eligible supplier offers</li><li>Check usage rights and the quote</li><li>Pay the supplier and retrieve data</li></ol></div><div><p class="eyebrow">02 / Individual-authorized data</p><h3>Request consent and retrieve</h3><p>Singapore example: Singpass Myinfo.</p><ol><li>Show purpose, fields and recipients</li><li>Individual authenticates and consents</li><li>Approved integration retrieves permitted fields</li></ol></div></div><div class="flow-banner flow-result">Combine available results → return data, source and access evidence to the institution</div><p class="flow-note">Consent declined or data unavailable → manual input / document upload, or return a partial result. Marketplace purchases do not replace personal authorization.</p></div><footer class="slide-foot"><div class="source">Planned access path. Myinfo requires approved onboarding and scopes; consent alone does not grant unrestricted access. Data use and retention must follow the approved purpose and applicable rules. <a href="https://docs.developer.singpass.gov.sg/docs/getting-started/pre-requisites-for-onboarding" target="_blank" rel="noopener">Myinfo onboarding</a> · <a href="https://docs.developer.singpass.gov.sg/docs/products/myinfo/key-principles" target="_blank" rel="noopener">Data principles</a>.</div><div class="brand-mark">Relay</div></footer></section>
+<section class="slide pitch-slide " aria-labelledby="pitch-3"><header class="slide-head"><div><p class="eyebrow">Relay / x402 / Chain design</p><h1 id="pitch-3">A payment handshake inside the API request</h1></div><div class="folio">04 / 08</div></header><div class="slide-body"><div class="story"><table class="story-table pitch-chain"><thead><tr><th>Customer app</th><th>Relay proxy</th><th>Supplier / settlement</th></tr></thead><tbody><tr><td>Request a resource</td><td>Select an eligible offer</td><td>Return an HTTP 402 quote</td></tr><tr><td>One Relay interface</td><td>Check budget, sign payment<br>Retry with payment proof</td><td>Facilitator submits payment<br>XRPL validates settlement</td></tr><tr><td>Receive data + receipt</td><td>Reconcile delivery and payment</td><td>Release the resource</td></tr></tbody></table><p>For suppliers that require payment before delivery:<br><strong>x402</strong> connects the quote to API access. <strong>XRPL</strong> confirms settlement.</p><p class="muted">Demo purchase: <strong>0.02 Test XRP</strong> settled, with a transaction receipt and sample data returned.</p></div></div><footer class="slide-foot"><div class="source">Current demo: XRP Testnet payment to a local mirror and sample delivery. Fiat collection is planned. Vendor acceptance and end-to-end costs need validation. Payment proof does not prove data quality.</div><div class="brand-mark">Relay</div></footer></section>
+
+<section class="slide pitch-slide added-flow" aria-labelledby="customer-collection"><header class="slide-head"><div><p class="eyebrow">Relay / Proposed workflow</p><h1 id="customer-collection">Institution payment through its linked wallet</h1></div><div class="folio">05 / 08</div></header><div class="slide-body"><div class="flow-banner">Financial institution → A site / app → linked institutional wallet or billing account</div><div class="infra-flow"><div class="infra-step"><span class="step-index">01 · BIND</span><h3>Connect once</h3><p>Bind the institution and A site to an approved payer account and spending limits.</p></div><div class="infra-step"><span class="step-index">02 · REQUEST</span><h3>Carry payment context</h3><p>Each query includes the site identity and wallet reference. Relay returns a quote.</p></div><div class="infra-step"><span class="step-index">03 · PAY</span><h3>Authorize automatically</h3><p>Pay within the institution’s standing mandate. Over-limit requests require approval.</p></div><div class="infra-step"><span class="step-index">04 · CONFIRM</span><h3>Credit and reconcile</h3><p>Confirm receipt once, credit the institution’s sub-wallet and reserve the query budget.</p></div></div><div class="payment-rails"><div><h3>Fiat</h3><p>Bank / payment provider → Relay collection account</p></div><div><h3>USDT / stablecoins</h3><p>Approved token and network → Relay receiving wallet</p></div><div><h3>XBR · to confirm</h3><p>Requested asset; ticker and network pending confirmation</p></div></div><p class="flow-note">The app carries a wallet reference and payment authorization; private signing keys stay with the wallet provider. Customer payment and supplier settlement may use different rails.</p></div><footer class="slide-foot"><div class="source">Proposed collection design, not a live payment integration. Automatic payment requires a prior mandate or signed authorization. Quotes specify asset, network, conversion rate, fees and expiry. Existing demo settles supplier payments in XRP on XRPL Testnet; XBR is not yet mapped to an asset.</div><div class="brand-mark">Relay</div></footer></section>
+<section class="slide pitch-slide added-flow" aria-labelledby="subwallet-allocation"><header class="slide-head"><div><p class="eyebrow">Relay / Proposed workflow</p><h1 id="subwallet-allocation">Collection, sub-wallet allocation and settlement</h1></div><div class="folio">06 / 08</div></header><div class="slide-body"><div class="flow-banner">Confirmed fiat / token receipt → Relay collection layer → institution + A site sub-wallet</div><div class="wallet-stage"><p class="eyebrow">Reserve the quoted amount for this query</p><h3>Split by purpose after the request outcome is confirmed</h3></div><div class="wallet-grid"><div><span class="step-index">01 / SUPPLIER</span><h3>Supplier sub-wallets</h3><p>Allocate each supplier’s payable amount. Settle on that supplier’s accepted rail.</p></div><div><span class="step-index">02 / RELAY</span><h3>Service fee sub-wallet</h3><p>Allocate the disclosed Relay fee for the completed service.</p></div><div><span class="step-index">03 / COSTS</span><h3>Payment &amp; FX sub-wallet</h3><p>Allocate quoted processing, network and conversion costs.</p></div><div><span class="step-index">04 / CUSTOMER</span><h3>Remaining balance</h3><p>Release unused reserves to the institution. Track eligible refunds to the original payer.</p></div></div><p class="flow-note"><strong>One reconciliation record:</strong> institution, site, query, incoming payment, allocations and outgoing settlements. No marketplace purchase on a consent-only query → no marketplace supplier allocation; any access and service fees remain explicit.</p></div><footer class="slide-foot"><div class="source">Proposed allocation model: sub-wallets represent segregated accounting balances; dedicated on-chain addresses and custody arrangements remain to be designed. Never treat client balances as earned revenue. Confirmed receipts = allocated costs / fees + supplier amounts + remaining / refundable balance, reconciled per asset.</div><div class="brand-mark">Relay</div></footer></section>
+<section class="slide pitch-slide mechanism-slide query-economics" aria-labelledby="pitch-4">
+<header class="slide-head"><div><p class="eyebrow">Relay / Collection, payment &amp; cost assumptions</p><h1 id="pitch-4">Economics per completed query</h1></div><div class="folio">07 / 08</div></header>
+<div class="slide-body">
+<div class="query-payment-flow">
+<div><p class="eyebrow">01 / Customer funds Relay</p><h3>Reserve the query price</h3><p>Receive fiat or supported tokens into the institution balance. Reserve the quoted amount.</p></div>
+<div><p class="eyebrow">02 / Relay pays suppliers</p><h3>Pay for each paid attempt</h3><p>Pay the supplier’s quote on its accepted rail. Purchased data may fail Relay’s quality checks.</p></div>
+<div><p class="eyebrow">03 / Relay completes the query</p><h3>Charge once, on completion</h3><p>Deliver qualifying data and charge US$0.50. If incomplete, release or refund the reserve. Relay bears sunk costs.</p></div>
+</div>
+<div class="query-scenarios"><p class="eyebrow">Illustrative scenarios / US$0.50 revenue per completed query</p>
+<table class="story-table" aria-label="Supplier costs including unsuccessful paid attempts"><thead><tr><th>Completion yield*</th><th>Paid attempts<br>per completion</th><th>Supplier cost<br>per completion</th><th>Remaining before<br>other costs</th></tr></thead><tbody>
+<tr><td>100% / 1 in 1</td><td>1</td><td>US$0.0288</td><td>US$0.4712</td></tr>
+<tr><td>50% / 1 in 2</td><td>2</td><td>US$0.0576</td><td>US$0.4424</td></tr>
+<tr class="query-stress"><td>10% / 1 in 10</td><td>10</td><td>US$0.2880</td><td><strong>US$0.2120</strong></td></tr>
+</tbody></table></div>
+<div class="query-cost-notes"><p><strong>Cost per completion</strong> = all attempt costs ÷ completed queries.<br>Include failed or abandoned requests, screening / compute, payment / FX and refunds.</p><p><strong>Actual yield is unknown.</strong> Source quality and Relay’s filtering quality drive the outcome. Measure both before setting price and retry limits.</p></div>
+</div>
+<footer class="slide-foot"><div class="source">*Yield = completed queries / paid supplier attempts across all requests. Scenarios assume US$0.0288 per paid attempt with no supplier refunds (0.02 XRP at illustrative US$1.44/XRP). 10% is a stress scenario, not a measured rate. Remaining spread must also cover other variable costs and fixed operations. Collection and completion billing above describe the proposed model.</div><div class="brand-mark">Relay</div></footer>
+</section>
+
+<section class="slide pitch-slide " aria-labelledby="pitch-5"><header class="slide-head"><div><p class="eyebrow">Relay / Conclusion</p><h1 id="pitch-5">Relay is the procurement proxy for apps and agents</h1></div><div class="folio">08 / 08</div></header><div class="slide-body"><div class="story"><p class="lead">One command to start.<br><strong>No supplier integrations to build.</strong></p><div style="border-top:2px solid var(--green);border-bottom:1px solid var(--rule);padding:20px 0"><p class="eyebrow" style="font-size:13px;margin-bottom:12px">Try Relay from your terminal</p><pre style="margin:0;white-space:pre-wrap;overflow-wrap:anywhere;font-family:var(--mono);font-size:clamp(14px,1.45vw,21px);line-height:1.55"><code>curl -X POST localhost:8000/run -H 'Content-Type: application/json' -d '{"applicant_id":"PERSON-001","data_type":"industry_income_benchmarks","applicant_region":"US-CA"}'</code></pre></div><p class="muted"><strong>Your team defines the need. Relay handles the purchase.</strong><br>Today’s demo returns sample data and a payment receipt in the dashboard.</p><p class="pitch-links"><a href="http://127.0.0.1:8000/" target="_blank" rel="noopener">Open demo ↗</a> <a href="#appendix">Discussion: assumptions &amp; backup ↗</a></p></div></div><footer class="slide-foot"><div class="source">Local demo: start Relay with sh start.sh and configured Testnet wallets first. The command starts an asynchronous purchase and returns a request ID; results appear in the dashboard / GET /status. Uses default score and freshness policy. Region is logged; industry-specific matching and real applicant data remain planned.</div><div class="brand-mark">Relay</div></footer></section>
+
+<section class="slide " id="appendix" aria-labelledby="assumptions-v3"><header class="slide-head"><div><p class="eyebrow">Appendix / Validation discussion</p><h1 id="assumptions-v3">Working assumptions to challenge</h1></div><div class="folio">Appendix A01 / 15</div></header><div class="slide-body"><div class="story"><table class="story-table validation-table"><thead><tr><th>What must hold</th><th>Evidence needed</th><th>If it fails</th></tr></thead><tbody><tr><td><strong>Recurring paid demand</strong></td><td>One named buyer, repeated procurement pain and paid repeat usage.</td><td>Narrow the workflow or reconsider the customer.</td></tr><tr><td><strong>Purchasable, comparable supply</strong></td><td>Supplier permission, usage rights, comparable offers and accepted payment methods.</td><td>Limit supported suppliers and categories.</td></tr><tr><td><strong>Reliable delivery</strong></td><td>Contract and match checks, separate quality evidence, clear refund and failure handling.</td><td>Use human review or decline unsupported requests.</td></tr><tr><td><strong>Workable economics</strong></td><td>Lower customer total cost, positive purchase contribution and enough repeat volume.</td><td>Change pricing, payment flow or target segment.</td></tr></tbody></table><p class="muted"><strong>Proven:</strong> XRP Testnet payment and sample delivery.<br><strong>Unvalidated:</strong> demand, supplier fit, complete costs and production reliability.</p></div></div><footer class="slide-foot"><div class="source">Validation framework, not market evidence. A failed settlement hypothesis does not by itself disprove procurement value. Customer billing and broader matching remain planned.</div><div class="brand-mark">Relay · Backup</div></footer></section>
+
+<section class="slide "  aria-labelledby="challenge-v3"><header class="slide-head"><div><p class="eyebrow">Appendix / Validation discussion</p><h1 id="challenge-v3">GTM and cost: the questions to answer</h1></div><div class="folio">Appendix A02 / 15</div></header><div class="slide-body"><div class="story"><table class="story-table validation-table"><thead><tr><th>Challenge</th><th>Current position / next evidence</th></tr></thead><tbody><tr><td>Who buys, and how do we reach them?</td><td>Proposed first customer: an underwriting product team. Identify its budget owner, acquisition route and approval process.</td></tr><tr><td>Why Relay over a direct API or aggregator?</td><td>Test recurring coverage gaps and supplier changes. Compare one identical task with the current buying process.</td></tr><tr><td>Why would suppliers participate?</td><td>Confirm resale / proxy permission, useful metadata and payment acceptance. An available API is insufficient.</td></tr><tr><td>Why x402 / XRPL rather than monthly billing?</td><td>Compare complete cost and delivery time. Keep USD-only suppliers and conversion costs in the analysis.</td></tr><tr><td>Will the price cover all costs?</td><td>Test willingness to pay, repeat volume and acquisition effort. Include FX, failed purchases, refunds, support and team costs.</td></tr></tbody></table></div></div><footer class="slide-foot"><div class="source">Open questions for a paid pilot. No customer commitments, validated acquisition channel, market-size estimate or measured savings are claimed.</div><div class="brand-mark">Relay · Backup</div></footer></section>
+<section class="slide" aria-labelledby="methods-market"><header class="slide-head"><div><p class="eyebrow">Appendix / Proposed response</p><h1 id="methods-market">A focused pilot before a marketplace</h1></div><div class="folio">Appendix A03 / 15</div></header><div class="slide-body"><div class="story"><table class="story-table validation-table"><thead><tr><th>Challenge</th><th>Proposed method</th><th>Evidence to proceed</th></tr></thead><tbody><tr><td><strong>Customer demand</strong></td><td>Recruit a few design partners around one recurring data gap. Identify the budget owner.</td><td>Real task history, a paid trial and repeat use.</td></tr><tr><td><strong>Supplier participation</strong></td><td>Start with a permitted supplier directory and API adapters. Confirm usage rights and payment terms.</td><td>Deliverable resources. Two substitutable offers before claiming comparison.</td></tr><tr><td><strong>Data confidence</strong></td><td>Check identity, schema and data dates. Attach source evidence and route unknowns to review.</td><td>Customer-approved acceptance criteria. Independent sources for independent verification.</td></tr><tr><td><strong>Selection incentives</strong></td><td>Apply hard requirements first, then compare total cost. Show the service fee and selection reason.</td><td>Customer can audit why an offer qualified.</td></tr></tbody></table></div></div><footer class="slide-foot"><div class="source">Proposed methods, not implemented capabilities. <a href="RELAY_VALIDATION_PLAN.md">Pilot plan and responsibilities</a>. For LEI source checks: <a href="https://www.gleif.org/en/lei-data/gleif-api">GLEIF API</a>. Same-source agreement is not independent corroboration.</div><div class="brand-mark">Relay · Backup</div></footer></section>
+<section class="slide" aria-labelledby="methods-cost"><header class="slide-head"><div><p class="eyebrow">Appendix / Proposed response</p><h1 id="methods-cost">Payment and cost controls for the pilot</h1></div><div class="folio">Appendix A04 / 15</div></header><div class="slide-body"><div class="story"><table class="story-table validation-table"><thead><tr><th>Challenge</th><th>Proposed method</th><th>Evidence to proceed</th></tr></thead><tbody><tr><td><strong>Small USD purchases</strong></td><td>Test prepaid usage or approved consolidated billing. Reserve budget in Relay’s ledger.</td><td>Actual collection cost per delivered request.</td></tr><tr><td><strong>XRPL value</strong></td><td>Use the vendor’s accepted rail. Compare XRPL with prepaid API access and monthly billing.</td><td>Complete cost, delivery time and reconciliation effort.</td></tr><tr><td><strong>Agent failures</strong></td><td>Use idempotency, quote expiry and transaction reconciliation. Retry delivery before paying again.</td><td>Fault tests and an explicit refund owner.</td></tr><tr><td><strong>Unit economics</strong></td><td>Log all attempts, checks, FX and support. Test a disclosed procurement fee.</td><td>Customer total-cost savings and positive contribution, followed by repeat volume.</td></tr></tbody></table></div></div><footer class="slide-foot"><div class="source">Proposals pending implementation and paid validation. References: <a href="https://docs.stripe.com/billing/subscriptions/usage-based/billing-credits">Stripe billing credits</a>, <a href="https://docs.x402.org/core-concepts/network-and-token-support">x402 production support</a>. <a href="RELAY_VALIDATION_PLAN.md">Cost formulas and stop conditions</a>.</div><div class="brand-mark">Relay · Backup</div></footer></section>
+
+<section class="slide business-loop-slide" aria-labelledby="story-1"><header class="slide-head"><div><p class="eyebrow">Relay / Product</p><h1 id="story-1">A proxy for supplier selection and small purchases</h1></div><div class="folio">Appendix A05 / 15</div></header><div class="slide-body"><div class="cover-split"><div class="story"><p class="lead">Your app requests a resource.<br><strong>Relay handles selection and purchase.</strong></p><p>Relay connects your application to eligible suppliers and authorized personal-data channels. It retrieves permitted data, purchases additional context and returns source and payment evidence.</p><p class="muted">One Relay integration. Your application keeps the business decision.</p></div><figure class="cover-loop"><svg viewBox="0 0 440 430" role="img" aria-labelledby="cover-loop-title cover-loop-desc"><title id="cover-loop-title">The Relay business loop</title><desc id="cover-loop-desc">Clockwise: the customer requests and pays, Relay sources and buys, the supplier returns data, and the customer receives the result and a receipt.</desc><defs><marker id="cover-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#2F6F4E"/></marker></defs><g fill="none" stroke="#2F6F4E" stroke-width="2" marker-end="url(#cover-arrow)"><path d="M207 74 C292 67 350 105 360 156"/><path d="M358 235 C345 305 296 342 235 347"/><path d="M103 308 C45 270 42 180 83 137"/></g><g font-family="IBM Plex Sans, Arial, sans-serif" fill="#5D6570" font-size="17"><text x="278" y="64" text-anchor="middle">Request + pay</text><text x="425" y="288" text-anchor="end">Purchase</text><text x="145" y="205" text-anchor="middle">Result</text><text x="145" y="228" text-anchor="middle">+ receipt</text><text x="145" y="251" text-anchor="middle">via Relay</text></g><g text-anchor="middle"><text x="130" y="91" class="cover-actor">Customer</text><text x="130" y="118" class="cover-detail">App or agent</text><text x="347" y="191" class="cover-actor cover-relay">Relay</text><text x="347" y="218" class="cover-detail">Sources &amp; pays</text><text x="160" y="349" class="cover-actor">Supplier</text><text x="160" y="376" class="cover-detail">Delivers the resource</text></g></svg><figcaption>Relay earns a service spread<br>on each completed purchase.</figcaption></figure></div></div><footer class="slide-foot"><div class="source">Platform vision: supplier selection and automated small purchases. Initial demo: underwriting data APIs. General resource support and customer billing remain planned.</div><div class="brand-mark">Relay · Backup</div></footer></section>
+
+<section class="slide" aria-labelledby="story-2"><header class="slide-head"><div><p class="eyebrow">Problem / Small purchases, repeated work</p><h1 id="story-2">Every small purchase repeats supplier work</h1></div><div class="folio">Appendix A06 / 15</div></header><div class="slide-body"><div class="story"><div class="story-list"><div><b>Find a source</b><span>Find a supplier offering the resource the application needs.</span></div><div><b>Check access</b><span>Compare capability, usage terms, price and customer rules.</span></div><div><b>Connect &amp; pay</b><span>Handle supplier access, payment and the response format.</span></div><div><b>Keep evidence</b><span>Record what was bought, from whom, and for how much.</span></div></div><p class="muted">A small purchase can still require supplier selection, an integration and a payment workflow.</p></div></div><footer class="slide-foot"><div class="source">Platform hypothesis: automate repeated supplier selection and purchasing. No measured integration-time or total-cost reduction is claimed.</div><div class="brand-mark">Relay · Backup</div></footer></section>
+
+<section class="slide" aria-labelledby="story-3"><header class="slide-head"><div><p class="eyebrow">Platform / What Relay automates</p><h1 id="story-3">Route data access, execute approved purchases</h1></div><div class="folio">Appendix A07 / 15</div></header><div class="slide-body"><div class="story"><div class="story-list"><div><b>Customer sets</b><span>The resource needed, required context, budget and supplier policy.</span></div><div><b>Relay selects</b><span>Route personal fields to an approved consent flow; compare eligible Marketplace offers for additional context.</span></div><div><b>Relay purchases</b><span>Collect from the institution’s linked account, allocate sub-wallet balances and pay suppliers when required.</span></div><div><b>App receives</b><span>The data, source, consent / access evidence, amounts paid and delivery status.</span></div></div><p class="muted">No qualifying offer → stop. Supplier claims and payment proof do not establish data quality.</p></div></div><footer class="slide-foot"><div class="source">Product design. Current selection uses category and demo policy fields across two configured resources; richer matching, payment routing and independent content checks remain planned.</div><div class="brand-mark">Relay · Backup</div></footer></section>
+
+<section class="slide" aria-labelledby="story-4"><header class="slide-head"><div><p class="eyebrow">First use case / Personal underwriting</p><h1 id="story-4">First use case: personal underwriting</h1></div><div class="folio">Appendix A08 / 15</div></header><div class="slide-body"><div class="story-split"><div class="story"><p>A loan officer is reviewing an individual’s loan application. The applicant works in the legal industry, and the officer needs context on changes that could affect their income.</p><p class="statement">The immediate task:<br><strong>Request the missing income or industry context for this person.</strong></p><p class="muted">With applicant consent, an approved Myinfo integration can supply available personal fields. Marketplace data adds industry context. A company registration check remains conditional on the lender’s request.</p></div><img src="assets/relay-loan-officer-v1.png" alt="Illustration of a loan officer reviewing an incomplete file"></div></div><footer class="slide-foot"><div class="source">An application of the platform, not its product boundary. Company registration is a conditional supplemental check, not the default request. The lender identifies the information need; current mirrors return samples, not person-specific or legal-industry-specific research.</div><div class="brand-mark">Relay · Backup</div></footer></section>
+
+<section class="slide cli-slide request-slide" aria-labelledby="story-5"><header class="slide-head"><div><p class="eyebrow">Integration / Underwriting example</p><h1 id="story-5">One API request starts the purchase</h1></div><div class="folio">Appendix A09 / 15</div></header><div class="slide-body"><div class="request-columns"><div class="request-context"><p class="eyebrow">01 · Customer policy</p><h3>Apply customer rules</h3><p>Allowed resource categories, supplier criteria and spending caps belong in the customer’s configuration.</p><p><strong>The request does not need to repeat the policy.</strong> Relay applies the server’s rules; a request can tighten the freshness requirement.</p><p class="request-note">Today: one shared server policy, displayed read-only in Configuration. Per-customer policy profiles are planned.</p><p class="eyebrow request-context-label">02 · Example: underwriting data</p><p>This example includes applicant, category, region and freshness. Each resource type needs its own request contract.</p></div><div class="cli-example"><div class="cli-heading"><strong>Current demo API · terminal example</strong></div><pre aria-label="Complete Relay request with applicant and region"><code>curl -X POST http://localhost:8000/run \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "applicant_id": "PERSON-001",
+    "data_type": "industry_income_benchmarks",
+    "applicant_region": "US-CA",
+    "freshness_requirement_days": 7,
+    "applicant_score": 612,
+    "trigger_reason": "Legal industry income context"
+  }'</code></pre><p class="cli-result">View progress, data and receipt:<br><code>curl http://localhost:8000/status</code></p><p class="cli-prereq">Local demo: run <code>sh start.sh</code> with Testnet wallets configured. POST starts a Testnet purchase.</p></div></div><p class="request-boundary"><strong>Demo boundary:</strong> returns supplier samples. Region and industry context are logged; precise matching and real applicant lookups remain planned.</p></div><footer class="slide-foot"><div class="source">Current API: category selection, applicant spend tracking, freshness constraint and score-band gate. Generic resource contracts and per-customer configuration remain planned. No qualifying supplier → stop.</div><div class="brand-mark">Relay · Backup</div></footer></section>
+
+<section class="slide mechanism-slide" aria-labelledby="story-6"><header class="slide-head"><div><p class="eyebrow">Business model / Fee per completed purchase</p><h1 id="story-6">Earn a service spread on each purchase</h1></div><div class="folio">Appendix A10 / 15</div></header><div class="slide-body"><div class="money-flow" aria-label="Customer pays Relay, which pays the data supplier"><div><span class="eyebrow">Customer</span><h3>Pays US$0.50</h3><p>Illustrative data purchase<br>Prices and trial credit in USD</p></div><span class="money-arrow" aria-hidden="true">→</span><div><span class="eyebrow">Relay</span><h3>Handles procurement</h3><p>Selects, purchases and<br>returns a result with a receipt</p></div><span class="money-arrow" aria-hidden="true">→</span><div><span class="eyebrow">Supplier</span><h3>Receives its quote</h3><p>Example: 0.02 XRP<br>≈ 0.0288 USDT equivalent</p></div></div><div class="economics"><div><div class="eyebrow">First-use-case pricing example</div><div class="economics-row"><span>Customer revenue</span><b>US$0.5000</b></div><div class="economics-row"><span>Supplier cost</span><b>− US$0.0288</b></div><div class="economics-row spread"><span>Gross spread / query</span><b>US$0.4712</b></div><p>Single-attempt baseline only. Slide 7 includes unsuccessful paid attempts: at 10% completion yield, supplier cost is US$0.2880 and spread is US$0.2120 before other costs.</p></div><div class="settlement-copy operating-copy"><div class="eyebrow">Costs beyond the supplier</div><h3>Fund the team and each purchase</h3><p><strong>Monthly fixed costs:</strong> 1 engineer + 1 sales hire, plus base hosting and operations.</p><p><strong>Variable costs:</strong> payment / FX fees, slippage, validation, compute, support and failed purchases.</p><p class="cost-formula">Operating result = completed queries × price − supplier and other variable costs across all attempts − monthly fixed costs − trial costs.</p><p class="trial-small">Trial proposal: US$10 / 20 queries. Trial fulfilment costs also need funding.</p></div></div></div><footer class="slide-foot"><div class="source">US$0.50 is a data-use-case proposal, not a universal platform price. FX illustration: 1 XRP = 1.44 USDT; 1 USDT = US$1.00. Salaries and operating costs are not yet estimated. Fast conversion reduces exposure time, not fees or slippage. Current demo: XRP payment and internal cost + 17.5% ledger; USD collection / USDT conversion planned.</div><div class="brand-mark">Relay · Backup</div></footer></section>
+
+<section class="slide mechanism-slide" aria-labelledby="story-7"><header class="slide-head"><div><p class="eyebrow">Infrastructure / XRPL behind the proxy</p><h1 id="story-7">Where XRPL powers the purchase</h1></div><div class="folio">Appendix A11 / 15</div></header><div class="slide-body"><div class="infra-intro"><strong>Customers may fund in fiat or supported tokens; the supplier chooses its settlement rail.</strong> x402 connects a supplier quote to payment and access.</div><div class="infra-flow"><div class="infra-step"><span class="step-index">01 · QUOTE</span><h3>Vendor → Relay</h3><p>HTTP 402 specifies the amount, destination and network.</p></div><div class="infra-step"><span class="step-index">02 · AUTHORIZE</span><h3>Relay → Vendor</h3><p>Relay’s wallet signs the approved XRP Payment and retries with payment proof.</p></div><div class="infra-step"><span class="step-index">03 · SETTLE</span><h3>Facilitator → XRPL</h3><p>The facilitator verifies and submits the payment for ledger validation.</p></div><div class="infra-step"><span class="step-index">04 · DELIVER</span><h3>Vendor → Relay → App</h3><p>Data and receipt return. Relay checks the transaction independently through XRPL RPC.</p></div></div><div class="chain-proof"><div><div class="eyebrow">On-chain example · 0.02 Test XRP</div><div class="wallet-transfer"><a href="https://testnet.xrpl.org/accounts/rhvG51GwRzK5ShoNATo8ay263SFdBERZjy" target="_blank" rel="noopener">Relay payer wallet ↗</a><span aria-hidden="true">→</span><a href="https://testnet.xrpl.org/accounts/rNuXMrAeAdusnhcsVXGaG79wTvHuRDSeEs" target="_blank" rel="noopener">Mirror receiver wallet ↗</a></div><a class="proof-link" href="https://testnet.xrpl.org/transactions/B9388275CA9C7E751EB0BF6470892B3C9BC773CE3C4BB9A91DE86BAFADAA1068" target="_blank" rel="noopener">Inspect the confirmed payment on XRPL Explorer ↗</a></div><p><strong>XRPL provides:</strong> a validated transfer and a transaction hash that can be checked independently.<br><strong>Relay provides:</strong> supplier selection, procurement policy and the audit record.</p></div></div><footer class="slide-foot"><div class="source">Source: orchestrator.py and the linked Testnet transaction. Payment goes to a local mirror; returned data is an advertised sample. Customer billing and applicant data stay off-chain in this demo. Current settlement uses XRP; vendor-specific USD / USDT routing is planned. End-to-end speed and total cost still need measurement. <a href="https://xrpl.org/about/xrp" target="_blank" rel="noopener">XRPL payment properties</a>.</div><div class="brand-mark">Relay · Backup</div></footer></section>
+
+<section class="slide" aria-labelledby="story-8"><header class="slide-head"><div><p class="eyebrow">Demo evidence / One sample purchase</p><h1 id="story-8">A sample result with proof of purchase</h1></div><div class="folio">Appendix A12 / 15</div></header><div class="slide-body"><div class="story"><table class="story-table"><thead><tr><th>Returned data</th><th>Purchase evidence</th></tr></thead><tbody><tr><td>Legal name: Apple Inc.<br>Entity status: ACTIVE<br>Registration status: ISSUED<br>Jurisdiction: US-CA</td><td>Resource: CompliancePulse LEI<br>Mirror price: 0.02 XRP<br>Network: XRPL Testnet<br>Result: independently confirmed</td></tr></tbody></table><p>The proxy returns a resource and a traceable receipt. In underwriting, this company-record branch applies only when the lender requests a linked-company check.</p><p class="muted"><a href="http://127.0.0.1:8000/" target="_blank" rel="noopener">Open the live procurement dashboard ↗</a></p></div></div><footer class="slide-foot"><div class="source">Apple is a fixed supplier sample, not an applicant-linked lookup. The receipt proves payment, not ownership, personal income or factual correctness. Sources: marketplace.py and orchestrator.py.</div><div class="brand-mark">Relay · Backup</div></footer></section>
+
+<section class="slide" aria-labelledby="story-9"><header class="slide-head"><div><p class="eyebrow">Evidence / Current scope</p><h1 id="story-9">A working purchase flow; a broader platform ahead</h1></div><div class="folio">Appendix A13 / 15</div></header><div class="slide-body"><div class="story"><table class="story-table"><thead><tr><th>Working today</th><th>Next product work</th></tr></thead><tbody><tr><td>Live 402 declarations from two configured resources<br>Server-side procurement checks<br>Real XRP Testnet settlement<br>Sample delivery and an audit ledger</td><td>Broader supplier discovery and request matching<br>Resource-specific contracts and content checks<br>Myinfo consent and approved data access<br>Institution-linked collection and sub-wallet allocation<br>Customer policies and payment routing<br>Reliable retries and production controls</td></tr></tbody></table><p class="muted">The demo proves one procurement path. Platform coverage, supplier quality and customer economics remain to be validated.</p></div></div><footer class="slide-foot"><div class="source">Evidence: orchestrator.py, marketplace.py and PRD v2.1. Vendor metadata and local Testnet mirrors are distinct; no mainnet vendor was paid.</div><div class="brand-mark">Relay · Backup</div></footer></section>
+
+<section class="slide" aria-labelledby="story-10"><header class="slide-head"><div><p class="eyebrow">Validation / Start with one use case</p><h1 id="story-10">Validate the proxy in one focused workflow</h1></div><div class="folio">Appendix A14 / 15</div></header><div class="slide-body"><div class="story"><p class="lead">One customer application.<br>One recurring purchase.<br><strong>Supplier selection through delivery.</strong></p><p>Start with underwriting data. Measure supplier fit, successful delivery, total purchase cost and integration effort against buying directly.</p><p class="muted"><a href="http://127.0.0.1:8000/" target="_blank" rel="noopener">Live demo ↗</a> &nbsp;·&nbsp; <a href="https://github.com/geekysong/demo" target="_blank" rel="noopener">Project repository ↗</a></p></div></div><footer class="slide-foot"><div class="source">Underwriting is the first pilot scenario. Expand to other API resources only after confirming supply, repeat usage and a workable cost model; no customer commitment is claimed.</div><div class="brand-mark">Relay · Backup</div></footer></section>
+
+<section class="slide assumptions-slide" aria-labelledby="story-11"><header class="slide-head"><div><p class="eyebrow">Open assumptions / What must hold</p><h1 id="story-11">Detailed technical and operating assumptions</h1></div><div class="folio">Appendix A15 / 15</div></header><div class="slide-body"><p class="assumptions-intro">The proxy creates value if it makes supplier selection and small purchases easier, reliable and economical.</p><table class="assumptions-table" aria-label="Open business and technical assumptions, validation questions and consequences"><thead><tr><th>Topic</th><th>Working position</th><th>What remains to prove</th></tr></thead><tbody><tr><td><strong>Customer value</strong><br>Demo assumption</td><td>Applications need recurring small purchases; Relay can reduce repeated procurement work.</td><td>Test preference for Relay over direct integrations. Underwriting is the first scenario, not the whole market.</td></tr><tr><td><strong>Supplier access</strong><br>Market hypothesis</td><td>Suppliers expose purchasable resources and sufficient metadata for selection.</td><td>Verify coverage, usage rights and accepted payments. API availability does not justify putting data on-chain.</td></tr><tr><td><strong>Data quality</strong><br>Evidence requirement</td><td>The proxy can check delivery and contract fit; content assurance needs separate evidence.</td><td>Define checks per resource; factual claims require source verification or independent cross-reference.</td></tr><tr><td><strong>Agent reliability</strong><br>Engineering work</td><td>Build contract checks, policy gates, duplicate-payment protection and reconciliation.</td><td>Test mismatches, retries and failures. Engineering checks reduce errors; they do not guarantee none.</td></tr><tr><td><strong>Payment experience</strong><br>Routing hypothesis</td><td>Customers see USD. XRPL can provide fast, low-fee settlement behind the scenes.</td><td>Confirm each vendor’s currency and network: USDT, XRP or USD. Measure complete cost and delivery time.</td></tr><tr><td><strong>Economics &amp; FX</strong><br>Cost model</td><td>Rapid XRP conversion limits exposure time; spread must fund engineering, sales and operations.</td><td>Include exchange fees, slippage, validation and failures. USDT/USD parity and conversion liquidity are assumptions.</td></tr></tbody></table><p class="assumptions-limit"><strong>Proven today:</strong> XRP Testnet payment and sample delivery. <strong>Still to prove:</strong> general supplier matching, content checks, customer billing and multi-rail payment support.</p></div><footer class="slide-foot"><div class="source">Demo assumptions and implementation work, not production-readiness claims. Vendor type does not establish currency or network acceptance. XRP is the asset; XRPL is the ledger. <a href="RELAY_DATA_CONTRACT_DESIGN.md">Detailed assumptions and data-contract design ↗</a></div><div class="brand-mark">Relay · Backup</div></footer></section>
+
+    <div class="progress-track" aria-hidden="true"><div class="progress-bar" id="progressBar"></div></div>
+    <button class="appendix-jump" id="appendixJump" type="button">Appendix / Q&amp;A</button>
+    <nav class="nav" aria-label="Slide navigation">
+      <button class="nav-button" id="prevBtn" type="button" aria-label="Previous slide">‹</button>
+      <div class="dots" id="dots" aria-label="Choose slide"></div>
+      <button class="nav-button" id="nextBtn" type="button" aria-label="Next slide">›</button>
+    </nav>
+  </main>
+
+  <script>
+    (() => {
+      const slides = [...document.querySelectorAll('.slide')];
+      const pitchCount = slides.findIndex(slide => slide.getAttribute('aria-labelledby') === 'assumptions-v3');
+      const dots = document.getElementById('dots');
+      const prev = document.getElementById('prevBtn');
+      const next = document.getElementById('nextBtn');
+      const progress = document.getElementById('progressBar');
+      let index = 0;
+      let touchStartX = null;
+
+      slides.forEach((slide, slideIndex) => {
+        slide.setAttribute('aria-hidden', slideIndex === 0 ? 'false' : 'true');
+        const dot = document.createElement('button');
+        dot.type = 'button';
+        dot.className = `dot${slideIndex === 0 ? ' active' : ''}`;
+        dot.setAttribute('aria-label', slideIndex < pitchCount ? `Go to slide ${slideIndex + 1}` : `Appendix A${slideIndex - pitchCount + 1}`);
+        dot.classList.toggle('appendix-dot', slideIndex >= pitchCount);
+        dot.setAttribute('aria-current', slideIndex === 0 ? 'true' : 'false');
+        dot.addEventListener('click', () => show(slideIndex));
+        dots.appendChild(dot);
+      });
+
+      function show(nextIndex) {
+        const bounded = Math.max(0, Math.min(slides.length - 1, nextIndex));
+        if (bounded === index) return;
+        const movingBack = bounded < index;
+        slides[index].classList.remove('active');
+        slides[index].classList.toggle('from-left', !movingBack);
+        slides[index].setAttribute('aria-hidden', 'true');
+        index = bounded;
+        slides[index].classList.toggle('from-left', movingBack);
+        requestAnimationFrame(() => slides[index].classList.add('active'));
+        slides[index].setAttribute('aria-hidden', 'false');
+        updateControls();
+      }
+
+      function updateControls() {
+        [...dots.children].forEach((dot, dotIndex) => {
+          const active = dotIndex === index;
+          dot.classList.toggle('active', active);
+          dot.setAttribute('aria-current', active ? 'true' : 'false');
+        });
+        prev.disabled = index === 0;
+        next.disabled = index === slides.length - 1;
+        progress.style.width = `${index < pitchCount ? ((index + 1) / pitchCount) * 100 : ((index - pitchCount + 1) / (slides.length - pitchCount)) * 100}%`;
+        document.getElementById("appendixJump").textContent = index < pitchCount ? "Appendix / Q&A" : "Back to pitch";
+        document.title = index < pitchCount ? `Relay | ${index + 1} of ${pitchCount}` : `Relay | Appendix A${index - pitchCount + 1}`;
+      }
+
+      document.getElementById('appendixJump').addEventListener('click', () => show(index < pitchCount ? pitchCount : 0));
+      document.querySelector('a[href="#appendix"]').addEventListener('click', e => { e.preventDefault(); show(pitchCount); });
+      prev.addEventListener('click', () => show(index - 1));
+      next.addEventListener('click', () => show(index + 1));
+
+      document.addEventListener('keydown', (event) => {
+        if (event.key === 'ArrowRight' || event.key === 'PageDown' || event.key === ' ') {
+          event.preventDefault();
+          show(index + 1);
+        } else if (event.key === 'ArrowLeft' || event.key === 'PageUp') {
+          event.preventDefault();
+          show(index - 1);
+        } else if (event.key === 'Home') {
+          event.preventDefault();
+          show(0);
+        } else if (event.key === 'End') {
+          event.preventDefault();
+          show(slides.length - 1);
+        }
+      });
+
+      document.addEventListener('touchstart', (event) => {
+        touchStartX = event.changedTouches[0].clientX;
+      }, { passive: true });
+
+      document.addEventListener('touchend', (event) => {
+        if (touchStartX === null) return;
+        const distance = event.changedTouches[0].clientX - touchStartX;
+        if (Math.abs(distance) > 48) show(index + (distance < 0 ? 1 : -1));
+        touchStartX = null;
+      }, { passive: true });
+
+      updateControls();
+    })();
+  </script>
+</body>
+</html>

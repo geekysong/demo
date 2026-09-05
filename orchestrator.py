@@ -70,8 +70,10 @@ from x402_xrpl.clients.base import decode_payment_response, X402Client
 from x402_xrpl.types import PaymentRequirements
 
 import billing
+import customer_checkout
 import marketplace
 import policy_filter
+from relay_payment import add_relay_comment
 from policy_filter import filter_candidates, NoQualifyingCandidate
 
 load_dotenv()
@@ -84,6 +86,9 @@ RPC_URL = os.getenv("XRPL_TESTNET_RPC_URL", "https://testnet.xrpl-labs.com/")
 SELF_URL_BASE = os.getenv("RELAY_SELF_URL", "http://localhost:8000")
 
 app = FastAPI()
+app.include_router(customer_checkout.router)
+RUN_START_LOCK = threading.Lock()
+RUN_ACTIVE = False
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 
 MIRROR_CANDIDATES = {candidate["id"]: candidate for candidate in marketplace.fallback_candidates()}
@@ -111,7 +116,9 @@ def _mirror_payload(candidate_id: str) -> dict:
     return {
         "vendor": candidate["name"],
         "data_type": candidate["category"],
-        "delivery_mode": "testnet_mirror_of_live_bazaar_sample",
+        "delivery_mode": candidate["delivery_mode"],
+        "sample_label": candidate["sample_label"],
+        "sample_note": candidate["sample_note"],
         "source_marketplace": candidate["marketplace"],
         "source_url": candidate["source_url"],
         "source_network": candidate["source_network"],
@@ -247,7 +254,7 @@ def query_balance(address: str) -> int:
 
 def run_real_flow(
     run_id: int, request_id: str, scenario: str, applicant_id: str, trigger_reason: str,
-    applicant_score=None, data_type=None, applicant_region=None, freshness_requirement_days=None,
+    applicant_score=None, data_type=None, applicant_region=None, freshness_requirement_days=None, customer_checkout_id=None,
 ):
     timestamp = datetime.now(timezone.utc).isoformat()
 
@@ -255,6 +262,7 @@ def run_real_flow(
         return {
             "timestamp": timestamp, "request_id": request_id, "trigger_reason": trigger_reason,
             "applicant_id": applicant_id, "scenario": scenario,
+            "customer_checkout_id": customer_checkout_id,
             "applicant_score": applicant_score, "data_type": data_type,
             "applicant_region": applicant_region, "freshness_requirement_days": freshness_requirement_days,
         }
@@ -399,6 +407,7 @@ def run_real_flow(
             XRPLPresignedPaymentPayerOptions(wallet=buyer, network=reqs.network, rpc_url=RPC_URL, invoice_binding="both")
         )
         x_payment = payer.create_payment_header(reqs)  # <-- real signing happens here
+        x_payment = add_relay_comment(x_payment, buyer)
         set_state(phase="settling")
 
         # ---- Step 7: retry with signature -> facilitator verifies + settles server-side ----
@@ -437,7 +446,7 @@ def run_real_flow(
             # ---- Section 3 (Pricing): trial credit + platform fee, applied
             # to the billing ledger — NOT a second on-chain payment. See
             # billing.py for why. ----
-            bill = billing.bill_purchase(selected["price_drops"])
+            bill = billing.bill_purchase(selected["price_drops"]) if not customer_checkout_id else None
 
         # ---- Step 8: data already came back in resp2 ----
         set_state(
@@ -475,8 +484,25 @@ def run_real_flow(
         })
 
 
+def run_customer_flow(*args, **kwargs):
+    global RUN_ACTIVE
+    checkout_id = kwargs.get('customer_checkout_id')
+    try:
+        run_real_flow(*args, **kwargs)
+    except Exception as exc:
+        set_state(phase='failed', error=str(exc))
+    finally:
+        try:
+            if checkout_id:
+                customer_checkout.finish(checkout_id, get_state().get('phase'))
+        finally:
+            with RUN_START_LOCK:
+                RUN_ACTIVE = False
+
+
 @app.post("/run")
 async def run(request: Request):
+    global RUN_ACTIVE
     try:
         body = await request.json()
         if not isinstance(body, dict):
@@ -513,43 +539,58 @@ async def run(request: Request):
         applicant_region = body.get("applicant_region")
         freshness_requirement_days = body.get("freshness_requirement_days")
 
-    with STATE_LOCK:
-        STATE["run_id"] += 1
-        run_id = STATE["run_id"]
-    request_id = uuid.uuid4().hex.upper()
-    # Publish the new run synchronously before returning. Without this, a
-    # fast browser poll can observe the previous run's terminal state and
-    # stop polling before the worker thread has updated STATE.
-    set_state(
-        run_id=run_id,
-        phase="starting",
-        request_id=request_id,
-        scenario=scenario,
-        applicant_id=applicant_id,
-        trigger_reason=trigger_reason,
-        applicant_score=applicant_score,
-        data_type=data_type,
-        applicant_region=applicant_region,
-        freshness_requirement_days=freshness_requirement_days,
-        selected=None,
-        rejected=None,
-        candidates_considered=None,
-        quote=None,
-        tx_hash=None,
-        delivered=None,
-        confirmed=None,
-        error=None,
-    )
-    threading.Thread(
-        target=run_real_flow,
-        args=(run_id, request_id, scenario, applicant_id, trigger_reason),
-        kwargs=dict(
-            applicant_score=applicant_score, data_type=data_type,
-            applicant_region=applicant_region, freshness_requirement_days=freshness_requirement_days,
-        ),
-        daemon=True,
-    ).start()
-    return {"started": True, "run_id": run_id, "request_id": request_id, "scenario": scenario}
+    checkout_id = body.get("checkout_id")
+    if scenario == "default" and not checkout_id:
+        return JSONResponse(status_code=402, content={"error": "Complete wallet or mock fiat checkout first"})
+    with RUN_START_LOCK:
+        if checkout_id:
+            previous = customer_checkout.fetch(checkout_id)
+            if previous['request_id']:
+                return customer_checkout.claim(checkout_id, data_type, previous['run_id'], previous['request_id'])
+        current = get_state()
+        if RUN_ACTIVE or current.get('phase') in {'starting','candidates','quote','quoted','paying','settling','confirming'}:
+            return JSONResponse(status_code=409, content={"error": "A procurement is already running. Your payment is retained; retry shortly."})
+        request_id = uuid.uuid4().hex.upper()
+        if checkout_id:
+            customer_checkout.claim(checkout_id, data_type, current.get('run_id', 0) + 1, request_id)
+        with STATE_LOCK:
+            STATE["run_id"] += 1
+            run_id = STATE["run_id"]
+        # Publish the new run synchronously before returning. Without this, a
+        # fast browser poll can observe the previous run's terminal state and
+        # stop polling before the worker thread has updated STATE.
+        set_state(
+            run_id=run_id,
+            phase="starting",
+            request_id=request_id,
+            scenario=scenario,
+            applicant_id=applicant_id,
+            trigger_reason=trigger_reason,
+            applicant_score=applicant_score,
+            data_type=data_type,
+            applicant_region=applicant_region,
+            freshness_requirement_days=freshness_requirement_days,
+            selected=None,
+            rejected=None,
+            candidates_considered=None,
+            quote=None,
+            tx_hash=None,
+            delivered=None,
+            confirmed=None,
+            error=None,
+        )
+        RUN_ACTIVE = True
+        threading.Thread(
+            target=run_customer_flow,
+            args=(run_id, request_id, scenario, applicant_id, trigger_reason),
+            kwargs=dict(
+                applicant_score=applicant_score, data_type=data_type,
+                applicant_region=applicant_region, freshness_requirement_days=freshness_requirement_days,
+                customer_checkout_id=checkout_id,
+            ),
+            daemon=True,
+        ).start()
+        return {"started": True, "run_id": run_id, "request_id": request_id, "scenario": scenario}
 
 
 @app.get("/status")
@@ -569,7 +610,7 @@ async def health():
 
 
 @app.get("/marketplace/candidates")
-async def marketplace_candidates():
+def marketplace_candidates():
     """Real live 402 metadata + samples; this endpoint never pays."""
     return JSONResponse(marketplace.load_candidates())
 

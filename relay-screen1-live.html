@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Relay — Procurement Terminal (live)</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -119,6 +120,12 @@
   .verify-badge.ok{background:rgba(95,184,138,.15);color:var(--green);}
   .verify-badge.pending{background:rgba(232,163,61,.15);color:var(--amber);}
   @media (max-width:720px){.intake-grid{grid-template-columns:repeat(2,1fr);}.candidates,.marketplace-sources{grid-template-columns:1fr;}.rail{flex-wrap:wrap;}.rail-step{flex:1 1 25%;border-bottom:1px solid var(--line);}.receipt-grid{grid-template-columns:1fr;}}
+
+  .paybox{background:linear-gradient(115deg,#202f3a,#1a1f27);border:1px solid #425666;padding:22px;margin-bottom:22px;border-radius:8px;}
+  .payhead{display:flex;justify-content:space-between;gap:20px;align-items:flex-start}.payhead h2{font-family:'Space Grotesk',sans-serif;font-size:22px;margin:0 0 6px}.payhead p{color:var(--text-dim);margin:0;font-size:12px;max-width:590px}
+  .paychoices{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:20px}.paychoice{text-align:left;padding:17px;background:var(--panel);border:1px solid var(--line);color:var(--text);border-radius:5px}.paychoice strong{display:block;font-size:15px;margin-bottom:5px}.paychoice span{display:block;font:11px/1.6 'IBM Plex Mono',monospace;color:var(--text-dim)}
+  .moneyflow{display:flex;flex-wrap:wrap;gap:10px;font-size:11px;color:var(--text-dim);margin:18px 0 0}.moneyflow b{color:var(--brand)}#customerStatus{overflow-wrap:anywhere;margin-top:14px;font-size:12px;color:var(--green)}#customerReceipt{font-size:11px;overflow-wrap:anywhere;margin-top:10px}#customerReceipt a{color:var(--brand)}
+  @media(max-width:720px){header{flex-wrap:wrap;gap:15px}.tabbar{flex-wrap:wrap}.paychoices{grid-template-columns:1fr}.payhead{display:block}}
 </style>
 </head>
 <body>
@@ -138,10 +145,31 @@
 
   <div id="panel-screen1" class="tab-panel active">
 
+  <section>
+    <div class="section-label">Procurement flow <span style="color:var(--text-faint); font-weight:400;">— live progress</span></div>
+    <div class="rail" id="rail">
+      <div class="rail-step" data-step="1"><span class="n">1</span>Trigger</div>
+      <div class="rail-step" data-step="2"><span class="n">2</span>Discover</div>
+      <div class="rail-step" data-step="3"><span class="n">3</span>Candidates</div>
+      <div class="rail-step" data-step="4"><span class="n">4</span>Filter</div>
+      <div class="rail-step" data-step="5"><span class="n">5</span>Quote (402)</div>
+      <div class="rail-step" data-step="6"><span class="n">6</span>Pay</div>
+      <div class="rail-step" data-step="7"><span class="n">7</span>Settle (XRPL)</div>
+      <div class="rail-step" data-step="8"><span class="n">8</span>Deliver</div>
+    </div>
+  </section>
+
+  <section class="paybox" aria-labelledby="paymentHeading">
+    <div class="payhead"><div><h2 id="paymentHeading">Choose how you pay.</h2><p>Buy one demo data sample. Pay Relay first, then let the procurement agent handle the supplier.</p></div><span class="live-badge">CUSTOMER CHECKOUT</span></div>
+    <div class="paychoices"><button class="paychoice" id="payWallet"><strong>↗ Connect wallet</strong><span>0.10 test XRP · XRPL Testnet only<br>Approve in GemWallet or use another Testnet wallet.</span></button><button class="paychoice" id="payFiat"><strong>▣ Pay with card</strong><span>$0.50 USD · Mock checkout<br>Simulated card payment. No real charge.</span></button></div>
+    <div class="moneyflow"><b>You</b><span>→ customer payment →</span><b>Relay</b><span>→ separate Testnet supplier payment →</span><b>Data + receipts</b></div>
+    <div id="customerStatus" role="status" aria-live="polite">Choose a data product below, then complete checkout to enable procurement.</div><div id="customerReceipt"></div>
+  </section>
+
   <div class="panel-toolbar">
     <div class="status-pill" id="statusPill">idle</div>
     <button class="ghost" id="resetBtn" disabled>Reset</button>
-    <button id="runBtn">Run flow</button>
+    <button id="runBtn" disabled>Pay first to run procurement</button>
   </div>
 
   <section>
@@ -151,7 +179,7 @@
         <div><div class="field-k">applicant score</div><div class="field-v accent" id="intakeScore">612 — gray zone</div></div>
         <div><div class="field-k">data gap</div><select class="field-v" id="dataTypeSelect">
           <option value="business_registration_status">business registration status</option>
-          <option value="industry_income_benchmarks">industry income benchmarks</option>
+          <option value="industry_income_benchmarks">industry income benchmarks · legal services sample</option>
         </select></div>
         <div><div class="field-k">region</div><div class="field-v" id="intakeRegion">US</div></div>
         <div><div class="field-k">freshness required</div><div class="field-v" id="intakeFreshness">≤ 30 days</div></div>
@@ -165,24 +193,14 @@
     </div>
   </section>
 
+  <p class="note" id="benchmarkNote" hidden>Income benchmark demo: US legal services, May 2023 BLS wage statistics. Historical sample only; it does not meet the 30-day freshness requirement or verify personal income.</p>
+
   <section>
-    <div class="section-label"><span class="step-tag">LIVE</span>t54 XRPL AI Hub sources — real 402 schema + sample, payment mirrored on Testnet</div>
+    <div class="section-label"><span class="step-tag">LIVE</span>Marketplace sources — live quotes and clearly labeled Testnet samples</div>
     <div class="marketplace-sources" id="marketplaceSources"><div class="note">loading live marketplace declarations…</div></div>
   </section>
 
-  <section>
-    <div class="section-label">Flow — Section 4 steps <span style="color:var(--text-faint); font-weight:400;">(each step below only advances when the backend reports it — poll it yourself at <code>/status</code>)</span></div>
-    <div class="rail" id="rail">
-      <div class="rail-step" data-step="1"><span class="n">1</span>Trigger</div>
-      <div class="rail-step" data-step="2"><span class="n">2</span>Discover</div>
-      <div class="rail-step" data-step="3"><span class="n">3</span>Candidates</div>
-      <div class="rail-step" data-step="4"><span class="n">4</span>Filter</div>
-      <div class="rail-step" data-step="5"><span class="n">5</span>Quote (402)</div>
-      <div class="rail-step" data-step="6"><span class="n">6</span>Pay</div>
-      <div class="rail-step" data-step="7"><span class="n">7</span>Settle (XRPL)</div>
-      <div class="rail-step" data-step="8"><span class="n">8</span>Deliver</div>
-    </div>
-  </section>
+
 
   <section>
     <div class="section-label"><span class="step-tag">3–4</span>Bazaar candidates → Policy Matrix filter — computed server-side by <code>policy_filter.py</code></div>
@@ -233,6 +251,47 @@
   const receipt = document.getElementById('receipt');
   document.getElementById('auditExportLink').href = apiUrl('/audit.csv');
 
+  let customerOrder = null;
+  const customerStatus = document.getElementById('customerStatus');
+  const productSelect = document.getElementById('dataTypeSelect');
+  async function checkoutApi(path, body) {
+    const res = await fetch(apiUrl(path), body ? {method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body)} : {});
+    const data = await res.json();
+    if (!res.ok) throw Error(typeof data.detail === 'string' ? data.detail : (data.error || 'Checkout unavailable'));
+    return data;
+  }
+  function customerReady(){return customerOrder?.status === 'paid' && !customerOrder?.request_id;}
+  function renderCustomer(){
+    runBtn.disabled = !customerReady();
+    runBtn.textContent = customerReady() ? 'Run paid procurement →' : customerOrder?.request_id ? 'Procurement already submitted' : 'Pay first to run procurement';
+    const inFlight = customerOrder?.procurement === 'starting';
+    productSelect.disabled = customerReady() || inFlight;
+    if(!customerOrder) return;
+    const o=customerOrder;
+    const paid=o.status==='paid';
+    customerStatus.textContent=paid ? (o.mock?'Mock payment successful · $0.50 USD · no real charge.':'Customer payment confirmed · 0.10 XRP on Testnet.') : `Customer payment: ${o.status}. No procurement started.`;
+    if(o.procurement==='sample_delivered')customerStatus.textContent+=' Sample delivered; data accuracy is not certified.';
+    else if(o.procurement==='needs_review')customerStatus.textContent+=' Procurement needs review. Payment retained; no automatic refund.';
+    else if(o.request_id)customerStatus.textContent+=' Procurement submitted. This payment cannot be spent twice.';
+    const receiptEl=document.getElementById('customerReceipt');receiptEl.replaceChildren();
+    if(o.tx_hash){const link=document.createElement('a');link.textContent='View customer Testnet payment ↗';link.href='https://testnet.xrpl.org/transactions/'+o.tx_hash;link.target='_blank';link.rel='noopener';receiptEl.append(link);}
+    else if(!paid && o.status!=='cancelled'){const link=document.createElement('a');link.textContent='Resume checkout →';link.href=apiUrl('/checkout-page')+'#id='+encodeURIComponent(o.id);receiptEl.append(link);}
+    document.getElementById('payWallet').disabled=customerReady() || inFlight;document.getElementById('payFiat').disabled=customerReady() || inFlight;
+  }
+  async function openCheckout(method){
+    document.getElementById('payWallet').disabled=true;document.getElementById('payFiat').disabled=true;
+    try{customerOrder=await checkoutApi('/checkout',{method,data_type:productSelect.value});sessionStorage.setItem('relay-checkout',customerOrder.id);location.assign(apiUrl('/checkout-page')+'#id='+encodeURIComponent(customerOrder.id));}
+    catch(e){customerStatus.textContent=e.message;document.getElementById('payWallet').disabled=false;document.getElementById('payFiat').disabled=false;}
+  }
+  document.getElementById('payWallet').onclick=()=>openCheckout('wallet');
+  document.getElementById('payFiat').onclick=()=>openCheckout('fiat');
+  async function restoreCheckout(){
+    const id=new URLSearchParams(location.hash.slice(1)).get('checkout')||sessionStorage.getItem('relay-checkout');
+    if(!id){renderCustomer();return;}
+    try{customerOrder=await checkoutApi('/checkout/'+encodeURIComponent(id));sessionStorage.setItem('relay-checkout',id);productSelect.value=customerOrder.data_type;renderCustomer();if(customerOrder.procurement==='starting')startPolling();}
+    catch(e){customerStatus.textContent=e.message;renderCustomer();}
+  }
+
   let pollTimer = null;
   let seenPhases = new Set();
   let sawCandidates = false;
@@ -272,13 +331,13 @@
       const cls = isSelected ? 'accepted' : 'rejected';
       const verdictCls = isSelected ? 'pass' : 'fail';
       const verdictText = isSelected
-        ? 'selected — passes trust, freshness, whitelist'
+        ? (c.sample_data?.sample ? 'selected for Testnet demo — historical sample; freshness not satisfied' : 'selected — passes configured demo policy')
         : `rejected — ${c.rejection_reasons.join('; ')}`;
       return `<div class="candidate revealed ${cls}">
         <div class="cand-name">${esc(c.name)}</div>
         <div class="cand-row"><span>price</span><span class="v">${esc(c.price_label || (c.price_drops + ' drops'))}</span></div>
         <div class="cand-row"><span>trust score</span><span class="v">${c.trust_score}</span></div>
-        <div class="cand-row"><span>freshness</span><span class="v">${c.freshness_days} days</span></div>
+        <div class="cand-row"><span>${c.sample_data?.sample ? 'sample period' : 'freshness (demo field)'}</span><span class="v">${c.sample_data?.sample ? esc(c.sample_data.period) : c.freshness_days + ' days'}</span></div>
         <div class="cand-row"><span>source rail</span><span class="v">${esc(c.source_network || '—')} → xrpl:1 mirror</span></div>
         <div class="cand-row"><span>schema</span><span class="v">${esc(c.schema)}</span></div>
         <div class="verdict ${verdictCls}">${esc(verdictText)}</div>
@@ -366,6 +425,7 @@
         ${s.delivered ? `
         <div class="full" style="border-top:1px dashed var(--line-soft);padding-top:10px;margin-top:2px;">
           <div class="k">purchased data · ${esc(s.delivered.delivery_mode || 'delivered')}</div>
+          <div class="note">${esc(s.delivered.sample_label || '')}<br>${esc(s.delivered.sample_note || '')}</div>
           <pre class="sample-block">${esc(JSON.stringify(s.delivered.result, null, 2))}</pre>
         </div>` : ''}
         ${s.billing ? `
@@ -386,6 +446,7 @@
       const res = await fetch(apiUrl('/status'));
       const s = await res.json();
       renderFromState(s);
+      if(customerOrder?.request_id && ["delivered","failed","settlement_unconfirmed","escalated_no_candidate","not_triggered"].includes(s.phase)){customerOrder=await checkoutApi("/checkout/"+encodeURIComponent(customerOrder.id));renderCustomer();}
     } catch(e) {
       addConsoleLine(`status poll error: ${e}`, 'err');
     }
@@ -397,11 +458,12 @@
   }
   function stopPolling(){
     if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
-    runBtn.disabled = false;
+    renderCustomer();
     resetBtn.disabled = false;
   }
 
   async function runFlow(){
+    if(!customerReady()) return;
     runBtn.disabled = true;
     resetBtn.disabled = true;
     resetUI();
@@ -416,6 +478,7 @@
         method: 'POST',
         headers: {'content-type': 'application/json'},
         body: JSON.stringify({
+          checkout_id: customerOrder.id,
           applicant_score: 612,
           data_type: dataType,
           applicant_region: 'US',
@@ -430,11 +493,13 @@
       if (!res.ok || !data.started) {
         throw new Error(data.error || data.detail || `Run rejected (HTTP ${res.status})`);
       }
+      customerOrder = await checkoutApi("/checkout/"+encodeURIComponent(customerOrder.id));
+      renderCustomer();
       addConsoleLine(`backend run started, run_id=${data.run_id}`);
     } catch(e) {
       addConsoleLine(`failed to start run: ${e}`, 'err');
       statusPill.textContent = 'failed'; statusPill.className = 'status-pill';
-      runBtn.disabled = false;
+      renderCustomer();
       resetBtn.disabled = false;
       return;
     }
@@ -453,8 +518,9 @@
   }
 
   runBtn.addEventListener('click', runFlow);
-  resetBtn.addEventListener('click', () => { resetUI(); runBtn.disabled = false; resetBtn.disabled = true; });
+  resetBtn.addEventListener('click', () => { resetUI(); renderCustomer(); resetBtn.disabled = true; });
 
+  restoreCheckout();
   poll();
 
   // The intake panel's policy-strip used to be hardcoded text that could
@@ -477,6 +543,7 @@
     const label = event.target.selectedOptions[0].textContent;
     const category = document.getElementById('policyCategory');
     if (category) category.textContent = `${label} — whitelisted`;
+    document.getElementById('benchmarkNote').hidden = event.target.value !== 'industry_income_benchmarks';
   });
 
   // ---------------------------------------------------------------------
@@ -497,10 +564,12 @@
             <div class="source-status">${esc(c.discovery_status)} · unpaid probe</div>
           </div>
           <div class="source-meta">${esc(c.category)} · ${esc(c.price_label)} · real rail ${esc(c.source_network)} · Testnet mirror xrpl:1</div>
-          <div class="field-k">sample input</div>
+          <div class="field-k">probe input</div>
           <pre class="sample-block">${esc(JSON.stringify(c.sample_input, null, 2))}</pre>
-          <div class="field-k" style="margin-top:8px;">advertised sample output</div>
+          <div class="field-k" style="margin-top:8px;">${esc(c.sample_label || 'Testnet delivery sample')}</div>
+          <div class="note">${esc(c.sample_note || '')}</div>
           <pre class="sample-block">${esc(JSON.stringify(c.sample_data, null, 2))}</pre>
+          ${c.advertised_sample ? `<details><summary>Original vendor declaration (may differ from delivery sample)</summary><pre class="sample-block">${esc(JSON.stringify(c.advertised_sample, null, 2))}</pre></details>` : ''}
         </div>`).join('');
     } catch(e) {
       el.innerHTML = `<div class="note">failed to load marketplace declarations: ${esc(e)}</div>`;

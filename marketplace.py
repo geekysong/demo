@@ -58,7 +58,7 @@ SOURCES = [
         "name": "MacroPulse · BLS wage benchmarks",
         "category": "industry_income_benchmarks",
         "source_url": "https://macropulse.theaslangroupllc.com/api/macro/bls-series",
-        "probe_params": {"series": "wages,unemployment"},
+        "probe_params": {"series": "wages"},
         "testnet_path": "/testnet-mirror/bls",
         "fallback_description": (
             "Official US labor statistics by BLS series ID; returns latest values, "
@@ -67,19 +67,27 @@ SOURCES = [
         "fallback_input": {
             "type": "http",
             "method": "GET",
-            "queryParams": {"series": "cpi,unemployment"},
+            "queryParams": {"series": "wages"},
         },
+        "delivery_mode": "testnet_mirror_of_bls_historical_wage_sample",
+        "sample_label": "BLS historical wage sample · May 2023 · not live vendor output",
+        "sample_note": "Legal services, US national, all occupations. Historical demonstration data; does not satisfy a 30-day freshness requirement or verify an individual's income.",
         "fallback_sample": {
-            "series": [
-                {
-                    "requested": "cpi",
-                    "series_id": "CUUR0000SA0",
-                    "latest": {"value": 335.123, "period_name": "May 2026"},
-                    "yoy_pct_change": 2.4,
-                    "observations": [{"period": "May 2026", "value": 335.123}],
-                }
-            ],
-            "deterministic": True,
+            "data_type": "industry_income_benchmarks",
+            "metric": "industry_wages",
+            "industry": {"name": "Legal services", "taxonomy": "NAICS", "code": "541100"},
+            "occupation_scope": "All occupations (00-0000)",
+            "geography": "US national",
+            "period": "May 2023",
+            "currency": "USD",
+            "mean_annual_wage": 110650,
+            "median_hourly_wage": 36.18,
+            "mean_hourly_wage": 53.20,
+            "source": "US Bureau of Labor Statistics · OEWS",
+            "source_url": "https://www.bls.gov/oes/2023/may/naics4_541100.htm",
+            "sample": True,
+            "freshness_status": "historical_sample_not_validated_for_current_request",
+            "usage_note": "Industry context only; not personal income verification. Annual mean is not annual median.",
         },
     },
 ]
@@ -125,6 +133,9 @@ def _fallback_candidate(source: dict, error: str | None = None) -> dict:
         "description": source["fallback_description"],
         "sample_input": deepcopy(source["fallback_input"]),
         "sample_data": deepcopy(source["fallback_sample"]),
+        "delivery_mode": source.get("delivery_mode", "testnet_mirror_of_live_bazaar_sample"),
+        "sample_label": source.get("sample_label", "Stored vendor sample for Testnet delivery"),
+        "sample_note": source.get("sample_note", "Sample output only; not a live applicant lookup."),
         "supports_reason_codes": True,
         "deterministic_output": True,
     }
@@ -155,8 +166,8 @@ def fetch_candidate(source: dict, timeout: float = 8.0) -> dict:
         source_pay_to=accepted.get("payTo"),
         description=resource.get("description") or candidate["description"],
         schema="x402 Bazaar v2 · " + (resource.get("mimeType") or "application/json"),
-        sample_input=info.get("input") or candidate["sample_input"],
-        sample_data=info.get("output", {}).get("example") or candidate["sample_data"],
+        advertised_input=info.get("input"),
+        advertised_sample=info.get("output", {}).get("example"),
         discovery_status="live",
         discovery_error=None,
     )

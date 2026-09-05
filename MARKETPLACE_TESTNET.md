@@ -12,8 +12,8 @@ HTTP 402 response contains an x402 v2 `PAYMENT-REQUIRED` header with:
 
 Those vendors do not advertise `xrpl:1`. To keep this demo entirely on
 Testnet, Relay settles against local, clearly labelled Testnet mirror routes
-at the same nominal XRP amount (20,000 drops) and returns the vendor-advertised
-sample output. This proves discovery, policy selection, 402 handling, payment,
+at the same nominal XRP amount (20,000 drops) and returns an explicitly labeled sample. LEI uses a stored vendor example;
+the wage mirror uses historical BLS wage statistics as described below. This proves discovery, policy selection, 402 handling, payment,
 settlement, and delivery without claiming that the mainnet vendor was paid.
 
 ## Sources
@@ -35,8 +35,15 @@ settlement, and delivery without claiming that the mainnet vendor was paid.
 - Real rail: `xrpl:0`
 - Testnet mirror: `/testnet-mirror/bls`
 - Advertised price: 20,000 drops (0.02 XRP)
-- Sample fields: `series_id`, latest value and period, `yoy_pct_change`,
-  and observations
+- Delivery: historical BLS OEWS wage sample, US Legal Services (NAICS 541100),
+  all occupations, May 2023. Annual mean wage: USD 110,650; median hourly
+  wage: USD 36.18; mean hourly wage: USD 53.20.
+- Source: https://www.bls.gov/oes/2023/may/naics4_541100.htm
+- This is a cited historical sample, not MacroPulse output, not a current
+  applicant query, and not compliant with a 30-day data freshness requirement.
+- The original vendor CPI example remains available under `advertised_sample`
+  and in a collapsed declaration panel; it cannot overwrite `sample_data`
+  used by the wage preview and local delivery. Annual mean is not annual median.
 
 ## Demo endpoints
 

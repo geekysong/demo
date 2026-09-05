@@ -17,3 +17,5 @@ audit_log.jsonl
 .coverage
 htmlcov/
 
+
+.checkout.sqlite3*

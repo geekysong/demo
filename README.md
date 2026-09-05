@@ -6,6 +6,10 @@ A lender requests missing data. Relay selects a resource under the lender's proc
 
 This repository is a hackathon demo using **real XRP Testnet settlement, local vendor mirrors, and sample data delivery**. It is not a production lending system.
 
+## Customer payment
+
+The demo now supports a GemWallet / manual **XRPL Testnet** checkout and a separate **mock fiat card checkout**. Pay first, then run procurement. See [checkout flow and API changes](CHECKOUT_DEMO.md); default `/run` now requires a paid `checkout_id`.
+
 ## What the demo shows
 
 The dashboard has three tabs:
@@ -21,7 +25,7 @@ Two data products are available:
 | Product | Data category | Demo output |
 | --- | --- | --- |
 | CompliancePulse · Global LEI lookup | Business registration status | Sample legal name, entity status, registration status, and related fields |
-| MacroPulse · BLS wage benchmarks | Industry income benchmarks | An advertised sample of labor statistics series |
+| MacroPulse · BLS wage benchmarks | Industry income benchmarks | Historical BLS wage sample for US legal services (May 2023) |
 
 A successful run follows this flow:
 
@@ -78,7 +82,7 @@ Open the **[local v2 presentation](http://127.0.0.1:8765/relay-business-deck-v2.
 | Policy checks | Server-side checks of price, cumulative spend, category, trust threshold, and freshness fields; trust and freshness values include demo assumptions |
 | Payment | A local payer wallet sends XRP Testnet funds to the local mirror's merchant account |
 | Original vendors | Their declarations advertise Mainnet `xrpl:0`; the demo does not pay them |
-| Data delivery | Mirrors return stored vendor samples, not live verification of the current applicant |
+| Data delivery | LEI returns a stored vendor sample; the wage mirror returns a cited historical BLS wage sample. Neither verifies the current applicant |
 | Receipts | Real transaction hashes, independent on-chain confirmation, and balance lookups; audit records are appended to local JSONL |
 | Platform billing | Demo ledger calculations only; no actual collection from lenders |
 
